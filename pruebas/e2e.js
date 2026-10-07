@@ -6,7 +6,7 @@ const fs = require('fs');
 const { chromium } = require('playwright');
 
 const RAIZ = path.resolve(__dirname, '..');
-const ARCHIVO = 'file://' + path.join(RAIZ, 'crm-vdo.html');
+const ARCHIVO = 'file://' + (process.env.CRM_HTML || path.join(RAIZ, 'crm-vdo.html'));
 const CAPTURAS = path.join(__dirname, 'capturas');
 const FIX = path.join(__dirname, 'fixtures');
 fs.mkdirSync(CAPTURAS, { recursive: true });

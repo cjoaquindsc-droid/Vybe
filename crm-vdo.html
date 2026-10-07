@@ -136,6 +136,19 @@ textarea { resize: vertical; }
 .acciones-fila .btn { margin-left: 4px; }
 .tabla.contactos tbody tr:hover td { background: var(--superficie2); }
 
+/* ---------- formulario de venta ---------- */
+.form-venta .venta-items-cab, .venta-item { display: grid; grid-template-columns: minmax(160px, 1.4fr) minmax(140px, 1.4fr) 80px 100px 110px 36px; gap: 6px; align-items: center; }
+.form-venta .venta-items-cab { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--texto3); padding: 0 2px; margin-top: 8px; }
+.venta-item { margin-top: 6px; }
+.venta-item input, .venta-item select { padding: 6px 8px; font-size: 13px; }
+.venta-item .total-item { font-variant-numeric: tabular-nums; color: var(--oro-claro); }
+.form-venta .form-grid { margin-top: 14px; }
+@media (max-width: 820px) {
+  .form-venta .venta-items-cab { display: none; }
+  .venta-item { grid-template-columns: 1fr 1fr; }
+  .venta-item select, .venta-item [data-item="nombre"] { grid-column: 1 / -1; }
+}
+
 /* ---------- plantillas ---------- */
 .plantilla { border-bottom: 1px solid var(--borde); padding: 8px 0; }
 .plantilla summary { cursor: pointer; }
@@ -1423,6 +1436,236 @@ window.VDO_DATOS = (function () {
     };
   }
 
+  /* =========================== Embudo: acciones compartidas =========================== */
+  var ORDEN_ETAPAS = ['atraer', 'iniciar', 'calificar', 'proponer', 'cerrar', 'fidelizar'];
+  function avanzarEtapa(c, etapa) { if (ORDEN_ETAPAS.indexOf(etapa) > ORDEN_ETAPAS.indexOf(c.etapa || 'atraer')) c.etapa = etapa; }
+  function plantillaPara(contacto, toque, canal, fecha) {
+    var pl = DB.tabla('plantillas').filter(function (p) { return p.activa !== false; });
+    var ola = olaDe(fecha || hoyISO()); var t = String(toque);
+    function filtra(seg, conOla, conCanal) { return pl.filter(function (p) { return p.segmento === seg && String(p.toque) === t && (!conOla || !p.ola || p.ola === ola) && (!conCanal || !canal || p.canal === canal); }); }
+    var cands = filtra(contacto.segmento, true, true);
+    if (!cands.length) cands = filtra(contacto.segmento, false, true);
+    if (!cands.length) cands = filtra(contacto.segmento, false, false);
+    if (!cands.length) cands = filtra('*', true, true);
+    if (!cands.length) cands = filtra('*', false, false);
+    if (contacto.segmento === 'piloto' && t === '1') { var sub = normTexto(contacto.subsegmento); var pref = /candidato|embajador|hotel/.test(sub) ? 'piloto_candidato_t1' : 'piloto_cliente_t1'; var x = cands.filter(function (p) { return p.id === pref; })[0]; if (x) return x; }
+    return cands.sort(function (a, b) { return (b.ola || 0) - (a.ola || 0); })[0] || null;
+  }
+  function generarCodigoReferido(contacto) {
+    var partes = String(contacto.nombre || '').trim().split(/\s+/).filter(Boolean);
+    var ini = partes.slice(0, 3).map(function (p) { return normTexto(p).charAt(0).toUpperCase(); }).join('') || 'VDO';
+    var base = ini + '-' + (telefonoDigitos(contacto.telefono).slice(-2) || String(DB.tabla('contactos').length % 100).padStart(2, '0'));
+    var cod = base, n = 1;
+    while (DB.tabla('contactos').some(function (c) { return c.id !== contacto.id && c.codigoReferido === cod; })) cod = base + String(++n);
+    return cod;
+  }
+  function registrarInteraccion(datos) {
+    var i = { id: nuevoId('i'), contactoId: datos.contactoId || '', fecha: datos.fecha || ahoraISO(), canal: datos.canal || 'whatsapp', toque: datos.toque == null ? '' : datos.toque, ola: olaDe((datos.fecha || ahoraISO()).slice(0, 10)), plantillaId: datos.plantillaId || '', mensaje: datos.mensaje || '', respuesta: datos.respuesta || '', resultado: datos.resultado || 'enviado', codigoOrigen: datos.codigoOrigen || '' };
+    DB.upsert('interacciones', i); return i;
+  }
+  function ultimaInteraccion(contactoId) { var l = DB.tabla('interacciones').filter(function (i) { return i.contactoId === contactoId; }).sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; }); return l[0] || null; }
+  // Marca un mensaje como enviado: cuenta el toque, fija el próximo y mueve a "Iniciar". No envía nada.
+  function marcarEnviado(contacto, opts) {
+    opts = opts || {}; var hoy = hoyISO(); var R = cfg().reglas;
+    var toque = opts.toque != null ? opts.toque : ((Number(contacto.toques) || 0) + 1);
+    var esNumerico = /^\d+$/.test(String(toque));
+    if (esNumerico) {
+      toque = Math.min(R.maxToques, Math.max(1, parseInt(toque, 10)));
+      if (toque === 1 || !contacto.inicioConversacion) { contacto.inicioConversacion = hoy; contacto.ultimaOla = hoy; contacto.respondio = false; }
+      contacto.toques = toque;
+      var prox = proximoToqueTras(contacto, hoy, toque);
+      contacto.proximoToque = prox || sumarDias(hoy, (cadenciaDe(contacto)[1] || 2)); // tras el último toque: fecha para cerrar la conversación si no responde
+      contacto.cierrePendiente = !prox;
+      avanzarEtapa(contacto, 'iniciar');
+    } else {
+      // toques especiales: post, propuesta, recordatorio, cierre
+      if (toque === 'propuesta') { avanzarEtapa(contacto, 'proponer'); contacto.proximoToque = sumarDias(hoy, 1); }
+      else if (toque === 'post') { contacto.proximoToque = ''; }
+      else contacto.proximoToque = sumarDias(hoy, 1);
+    }
+    contacto.ultimoContacto = hoy;
+    if (contacto.estado === 'dormido') contacto.estado = 'activo';
+    DB.upsert('contactos', contacto);
+    return registrarInteraccion({ contactoId: contacto.id, canal: opts.canal || 'whatsapp', toque: toque, plantillaId: opts.plantilla ? opts.plantilla.id : (opts.plantillaId || ''), mensaje: opts.mensaje || '', codigoOrigen: opts.codigoOrigen || contacto.codigoReferido || '' });
+  }
+  function marcarRespondio(contacto, textoRespuesta) {
+    var hoy = hoyISO(); contacto.respondio = true; contacto.ultimaRespuesta = hoy; contacto.cierrePendiente = false;
+    avanzarEtapa(contacto, 'calificar'); contacto.proximoToque = hoy; if (contacto.estado === 'dormido') contacto.estado = 'activo';
+    DB.upsert('contactos', contacto);
+    var ult = ultimaInteraccion(contacto.id);
+    if (ult && ult.resultado === 'enviado') { ult.respuesta = textoRespuesta || ult.respuesta || 'Respondió'; ult.resultado = 'respondio'; DB.upsert('interacciones', ult); }
+    else registrarInteraccion({ contactoId: contacto.id, canal: 'whatsapp', toque: '', respuesta: textoRespuesta || 'Respondió', resultado: 'respondio' });
+  }
+  function marcarPropuesta(contacto) { avanzarEtapa(contacto, 'proponer'); contacto.proximoToque = sumarDias(hoyISO(), 1); contacto.ultimoContacto = hoyISO(); DB.upsert('contactos', contacto); }
+  // Compra: la venta ya está guardada; mueve el contacto a Cerrar o Fidelizar y programa el post-venta
+  function marcarCompro(contacto, venta) {
+    var hoy = hoyISO(); var R = cfg().reglas;
+    contacto.yaCompro = true; contacto.respondio = true; contacto.cierrePendiente = false;
+    contacto.totalInvertido = Math.round(((Number(contacto.totalInvertido) || 0) + (venta && !venta.derivarB2B ? Number(venta.total) || 0 : 0)) * 100) / 100;
+    if (!contacto.codigoReferido) contacto.codigoReferido = generarCodigoReferido(contacto);
+    if (venta && venta.estado === 'entregado') { contacto.etapa = 'fidelizar'; contacto.proximoToque = sumarDias(venta.fechaCierre || hoy, R.diasPostVenta || 3); }
+    else { avanzarEtapa(contacto, 'cerrar'); contacto.proximoToque = (venta && venta.fechaEntrega) || sumarDias(hoy, 2); }
+    contacto.ultimoContacto = hoy; if (contacto.estado === 'dormido') contacto.estado = 'activo';
+    DB.upsert('contactos', contacto);
+    var ult = ultimaInteraccion(contacto.id);
+    if (ult && ult.fecha.slice(0, 10) === hoy && ult.resultado !== 'compro') { ult.resultado = 'compro'; DB.upsert('interacciones', ult); }
+    else registrarInteraccion({ contactoId: contacto.id, canal: 'whatsapp', toque: '', resultado: 'compro', mensaje: venta ? 'Venta ' + venta.id : '' , codigoOrigen: venta ? venta.codigoOrigen : '' });
+  }
+  function marcarDormido(contacto, motivo) { contacto.estado = 'dormido'; contacto.proximoToque = ''; contacto.cierrePendiente = false; contacto.toques = 0; contacto.notas = ((contacto.notas || '') + '\n' + fechaCorta(hoyISO()) + ': dormido' + (motivo ? ' · ' + motivo : '')).trim(); DB.upsert('contactos', contacto); }
+  function marcarPerdido(contacto, motivo) { contacto.estado = 'perdido'; contacto.proximoToque = ''; contacto.cierrePendiente = false; contacto.notas = ((contacto.notas || '') + '\n' + fechaCorta(hoyISO()) + ': perdido' + (motivo ? ' · ' + motivo : '')).trim(); DB.upsert('contactos', contacto); }
+  // Mantenimiento: quien no respondió al tercer toque y ya pasó la fecha de cierre pasa a dormido
+  function mantenimientoDiario() {
+    var hoy = hoyISO(); var n = 0;
+    DB.tabla('contactos').forEach(function (c) {
+      if (c.estado === 'activo' && c.cierrePendiente && !c.respondio && c.proximoToque && c.proximoToque < hoy && (Number(c.toques) || 0) >= cfg().reglas.maxToques) { marcarDormido(c, 'sin respuesta tras ' + c.toques + ' toques'); n++; }
+    });
+    return n;
+  }
+  // Cola del día: seguimientos vencidos y de hoy + toques iniciales hasta la cuota del día + cuentas con próximo paso
+  function colaDelDia(fecha) {
+    fecha = fecha || hoyISO(); var dia = diaCalendario(fecha); var items = []; var R = cfg().reglas;
+    var cont = DB.tabla('contactos'); var porId = {}; cont.forEach(function (c) { porId[c.id] = c; });
+    cont.filter(function (c) { return c.estado === 'activo' && c.proximoToque && c.proximoToque <= fecha; }).forEach(function (c) {
+      var tipo, toque;
+      if (c.etapa === 'fidelizar') { tipo = 'postventa'; toque = 'post'; }
+      else if (c.etapa === 'cerrar') { tipo = 'entrega'; toque = 'cierre'; }
+      else if (c.etapa === 'proponer') { tipo = 'cobro'; toque = 'recordatorio'; }
+      else if (c.etapa === 'calificar' || c.respondio) { tipo = 'responder'; toque = 'propuesta'; }
+      else if (c.cierrePendiente) { tipo = 'cerrar_conversacion'; toque = Number(c.toques) || R.maxToques; }
+      else if ((Number(c.toques) || 0) >= 1) { tipo = 'seguimiento'; toque = Math.min(R.maxToques, (Number(c.toques) || 0) + 1); }
+      else { tipo = 'inicial'; toque = 1; }
+      items.push({ tipo: tipo, contacto: c, toque: toque, vencido: c.proximoToque < fecha, plantilla: plantillaPara(c, toque, null, fecha) });
+    });
+    var enviadosHoy = {};
+    DB.tabla('interacciones').forEach(function (i) { if (i.fecha.slice(0, 10) === fecha && String(i.toque) === '1') { var c = porId[i.contactoId]; if (c) enviadosHoy[c.segmento] = (enviadosHoy[c.segmento] || 0) + 1; } });
+    if (dia) Object.keys(dia.cuotas).forEach(function (seg) {
+      var cuota = Number(dia.cuotas[seg]) || 0; if (!cuota) return;
+      var enCola = items.filter(function (x) { return x.contacto && x.contacto.segmento === seg && x.tipo === 'inicial'; }).length;
+      var faltan = cuota - (enviadosHoy[seg] || 0) - enCola; if (faltan <= 0) return;
+      var elegibles = cont.filter(function (c) { return c.segmento === seg && (c.estado === 'activo' || c.estado === 'dormido') && !c.proximoToque && ((c.etapa || 'atraer') === 'atraer' || c.estado === 'dormido') && puedeIniciarOla(c, fecha).ok; })
+        .sort(function (a, b) { var pa = (a.perfil === 'A' ? 0 : 1) - (b.perfil === 'A' ? 0 : 1); if (pa) return pa; var ua = a.ultimoContacto || '0000', ub = b.ultimoContacto || '0000'; if (ua !== ub) return ua < ub ? -1 : 1; return String(a.nombre).localeCompare(String(b.nombre)); });
+      elegibles.slice(0, faltan).forEach(function (c) { items.push({ tipo: 'inicial', contacto: c, toque: 1, vencido: false, plantilla: plantillaPara(c, 1, null, fecha) }); });
+    });
+    DB.tabla('cuentas').filter(function (k) { return k.fechaProximoPaso && k.fechaProximoPaso <= fecha && ['cerrado', 'perdido'].indexOf(k.estado) < 0; }).forEach(function (k) { items.push({ tipo: 'cuenta', cuenta: k, contacto: k.contactos && k.contactos.length ? porId[k.contactos[0]] : null, vencido: k.fechaProximoPaso < fecha }); });
+    var orden = { entrega: 0, cobro: 1, responder: 2, cuenta: 3, seguimiento: 4, cerrar_conversacion: 5, postventa: 6, inicial: 7 };
+    items.sort(function (a, b) { if (a.vencido !== b.vencido) return a.vencido ? -1 : 1; return (orden[a.tipo] || 9) - (orden[b.tipo] || 9); });
+    return items;
+  }
+  function resumenDia(fecha) {
+    fecha = fecha || hoyISO(); var dia = diaCalendario(fecha);
+    var inter = DB.tabla('interacciones').filter(function (i) { return i.fecha.slice(0, 10) === fecha; });
+    var ventas = DB.tabla('ventas').filter(function (v) { return (v.fechaCierre || v.fecha) === fecha && ['pagado', 'entregado'].indexOf(v.estado) >= 0 && !v.derivarB2B; });
+    var cuotaTotal = dia ? Object.keys(dia.cuotas).reduce(function (s, k) { return s + (Number(dia.cuotas[k]) || 0); }, 0) : 0;
+    return { fecha: fecha, dia: dia, enviados: inter.filter(function (i) { return i.resultado !== 'respondio' || i.toque !== ''; }).length, respondieron: inter.filter(function (i) { return i.resultado === 'respondio' || i.resultado === 'compro'; }).length, compraron: ventas.length, ventaDia: ventas.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0), metaDia: dia ? dia.metaDia : 0, cuotaDia: dia ? dia.cuotaDia : 0, cuotaContactos: cuotaTotal };
+  }
+
+  /* =========================== Formulario de venta (compartido) =========================== */
+  function catalogoVenta() {
+    var c = cfg(); var out = [];
+    c.productos.forEach(function (p) { out.push({ id: p.id, grupo: 'Botellas', nombre: p.nombre, linea: 'botellas', precio: p.b2c, precioBreca: p.breca, botellas: 1, estado: p.estado }); });
+    c.packs.forEach(function (p) { out.push({ id: p.id, grupo: 'Packs (por confirmar)', nombre: p.nombre, linea: 'botellas', precio: p.precio, botellas: p.botellas || 1, estado: p.estado }); });
+    c.experiencias.forEach(function (e) { out.push({ id: e.id, grupo: 'Experiencias (por persona)', nombre: e.nombre, linea: 'experiencia', precio: e.precio, precioBreca: Math.round(e.precio * (1 - c.reglas.descuentoBrecaExperiencias) * 100) / 100, porPersona: true, estado: 'vigente' }); });
+    c.paquetesGrupo.forEach(function (g) { out.push({ id: g.id, grupo: 'Paquetes de grupo (30 personas, por confirmar)', nombre: 'Paquete ' + g.nombre, linea: 'experiencia', precio: g.precio30, personasBase: g.personasBase, estado: g.estado }); });
+    return out;
+  }
+  function totalVenta(items) { return Math.round(items.reduce(function (s, it) { return s + (Number(it.total) || 0); }, 0) * 100) / 100; }
+  function lineaDe(items) { var exp = items.some(function (i) { return i.linea === 'experiencia'; }), bot = items.some(function (i) { return i.linea !== 'experiencia'; }); return exp && !bot ? 'experiencia' : 'botellas'; }
+  function normalizarVenta(v) {
+    v.items = (v.items || []).map(function (it) { it.cantidad = Number(it.cantidad) || 0; it.precio = Number(it.precio) || 0; it.total = Math.round(it.cantidad * it.precio * 100) / 100; return it; });
+    v.total = v.totalManual != null && v.totalManual !== '' ? Number(v.totalManual) : totalVenta(v.items);
+    v.botellas = v.items.reduce(function (s, it) { return s + (it.linea === 'experiencia' ? 0 : (Number(it.botellas) || 1) * it.cantidad); }, 0);
+    v.personas = Number(v.personas) || v.items.reduce(function (s, it) { return s + (it.porPersona ? it.cantidad : (it.personasBase || 0)); }, 0);
+    v.linea = v.linea || lineaDe(v.items);
+    v.derivarB2B = derivarB2B(v);
+    if (['pagado', 'entregado'].indexOf(v.estado) >= 0 && !v.fechaCierre) v.fechaCierre = hoyISO();
+    return v;
+  }
+  function formVenta(venta, opts) {
+    opts = opts || {}; var c = cfg(); var cat = catalogoVenta(); var hoy = hoyISO();
+    var contacto = opts.contacto || (venta && venta.contactoId ? DB.buscar('contactos', venta.contactoId) : null);
+    var v = venta ? clonar(venta) : { contactoId: contacto ? contacto.id : '', fecha: hoy, linea: 'botellas', items: [], personas: '', total: 0, gancho: '', codigoOrigen: (contacto && (contacto.codigoOrigen || contacto.referidoPor ? '' : '')) || '', estado: 'cotizado', fechaCierre: '', fechaEntrega: '', motivoPerdida: '', segmento: contacto ? contacto.segmento : '', embajadorId: '', notas: '', cuentaId: opts.cuentaId || '' };
+    if (!v.items.length) v.items = [{ productoId: 'silver700', nombre: 'Silver 700 ml', linea: 'botellas', cantidad: 1, precio: precioDe('silver700', contacto && contacto.segmento === 'breca' ? 'breca' : 'b2c') || 0, botellas: 1 }];
+    var ganchos = c.ganchos; var embajadores = DB.tabla('embajadores');
+    function filaItem(it, i) {
+      return '<div class="venta-item" data-i="' + i + '"><select data-item="productoId" data-i="' + i + '">' + '<option value="">— libre —</option>' + agrupar(cat, it.productoId) + '</select>' +
+        '<input data-item="nombre" data-i="' + i + '" value="' + attr(it.nombre || '') + '" placeholder="Descripción">' +
+        '<input data-item="cantidad" data-i="' + i + '" type="number" min="0" step="1" value="' + attr(it.cantidad == null ? 1 : it.cantidad) + '" title="Cantidad o personas">' +
+        '<input data-item="precio" data-i="' + i + '" type="number" min="0" step="0.01" value="' + attr(it.precio == null ? '' : it.precio) + '" title="Precio unitario">' +
+        '<span class="num total-item">' + soles((Number(it.cantidad) || 0) * (Number(it.precio) || 0)) + '</span><button type="button" class="btn chico peligro" data-quitar="' + i + '" title="Quitar">×</button></div>';
+    }
+    function agrupar(lista, sel) { var grupos = {}; lista.forEach(function (x) { (grupos[x.grupo] = grupos[x.grupo] || []).push(x); }); return Object.keys(grupos).map(function (g) { return '<optgroup label="' + attr(g) + '">' + grupos[g].map(function (x) { return '<option value="' + attr(x.id) + '"' + (x.id === sel ? ' selected' : '') + '>' + esc(x.nombre) + (x.precio != null ? ' · ' + soles(x.precio) : '') + (x.estado === 'por_confirmar' ? ' (por confirmar)' : '') + '</option>'; }).join('') + '</optgroup>'; }).join(''); }
+    var h = '<h3>' + (venta ? 'Editar venta' : 'Registrar venta u oportunidad') + '</h3>' + (contacto ? '<p class="texto2">' + esc(contacto.nombre) + ' · ' + esc(nombreSegmento(contacto.segmento)) + (contacto.telefono ? ' · ' + esc(contacto.telefono) : '') + '</p>' : '') +
+      '<form id="formVenta" class="form-venta">' +
+      (!contacto ? campo('Contacto', '<input name="buscarContacto" list="listaContactos" placeholder="Escribe el nombre o teléfono" value="' + attr(v.contactoId ? ((DB.buscar('contactos', v.contactoId) || {}).nombre || '') : '') + '"><datalist id="listaContactos">' + DB.tabla('contactos').slice(0, 2000).map(function (x) { return '<option value="' + attr(x.nombre + (x.telefono ? ' · ' + x.telefono : '')) + '">'; }).join('') + '</datalist>') : '') +
+      '<div class="venta-items-cab"><span>Producto</span><span>Descripción</span><span>Cant./pers.</span><span>P. unit.</span><span>Total</span><span></span></div><div id="ventaItems">' + v.items.map(filaItem).join('') + '</div>' +
+      '<div class="acciones"><button type="button" class="btn chico" data-agregar-item>Agregar línea</button><span class="texto2">Total: <b id="ventaTotal">' + soles(totalVenta(normalizarVenta(clonar(v)).items)) + '</b></span><span id="ventaAviso" class="pill alerta" hidden></span></div>' +
+      '<div class="form-grid">' +
+      campo('Fecha', inp('fecha', v.fecha, 'type="date"')) +
+      campo('Estado', '<select name="estado">' + opciones([{ valor: 'cotizado', texto: 'Cotizado' }, { valor: 'link_enviado', texto: 'Link de pago enviado' }, { valor: 'pagado', texto: 'Pagado' }, { valor: 'entregado', texto: 'Entregado / realizado' }, { valor: 'perdido', texto: 'Perdido' }], v.estado) + '</select>') +
+      campo('Fecha de cierre (pago)', inp('fechaCierre', v.fechaCierre, 'type="date"')) + campo('Fecha de entrega o visita', inp('fechaEntrega', isoDe(v.fechaEntrega) || '', 'type="date"')) +
+      campo('Gancho aplicado', '<select name="gancho"><option value="">Ninguno</option>' + ganchos.map(function (g) { return '<option value="' + attr(g.id) + '"' + (g.id === v.gancho ? ' selected' : '') + '>' + esc('Ola ' + g.ola + ' · ' + g.nombre) + (g.estado !== 'activo' ? ' (' + esc(g.estado) + ')' : '') + '</option>'; }).join('') + '</select>') +
+      campo('Código de origen', inp('codigoOrigen', v.codigoOrigen, 'placeholder="ej. CRIOLLA31, AQP-ANA, REF-LAP"')) +
+      campo('Segmento', '<select name="segmento">' + opcionesSegmentos(v.segmento, 'Sin segmento') + '</select>') +
+      campo('Embajador (si aplica)', '<select name="embajadorId"><option value="">Ninguno</option>' + embajadores.map(function (e) { return '<option value="' + attr(e.id) + '"' + (e.id === v.embajadorId ? ' selected' : '') + '>' + esc(e.codigo + ' · ' + e.nombre) + '</option>'; }).join('') + '</select>') +
+      campo('Personas (experiencias)', inp('personas', v.personas, 'type="number" min="0"')) +
+      campo('Total manual (S/, opcional)', inp('totalManual', v.totalManual == null ? '' : v.totalManual, 'type="number" step="0.01" min="0"'), 'Déjalo vacío para usar la suma de las líneas') +
+      campo('Motivo de pérdida', inp('motivoPerdida', v.motivoPerdida, 'placeholder="precio, fecha, sin respuesta…"')) +
+      '<label class="campo ancho"><span>Notas</span><textarea name="notas" rows="2">' + esc(v.notas || '') + '</textarea></label>' +
+      '</div><div class="acciones ancho">' + (venta ? '<button type="button" class="btn peligro izq" data-eliminar-venta>Eliminar</button>' : '') + '<button type="button" class="btn" data-accion="cerrar">Cancelar</button><button type="submit" class="btn primario">Guardar</button></div></form>';
+    abrirModal(h, { ancho: 'ancho' });
+    var form = $('formVenta');
+    function leerItems() {
+      return qsa('.venta-item', form).map(function (row) {
+        var pid = qs('[data-item="productoId"]', row).value; var p = cat.filter(function (x) { return x.id === pid; })[0];
+        return { productoId: pid, nombre: qs('[data-item="nombre"]', row).value, cantidad: Number(qs('[data-item="cantidad"]', row).value) || 0, precio: Number(qs('[data-item="precio"]', row).value) || 0, linea: p ? p.linea : 'botellas', botellas: p ? p.botellas || 0 : 1, porPersona: p ? !!p.porPersona : false, personasBase: p ? p.personasBase || 0 : 0 };
+      });
+    }
+    function refrescarTotales() {
+      var items = leerItems(); var tmp = normalizarVenta({ items: items, estado: qs('[name="estado"]', form).value, personas: qs('[name="personas"]', form).value, totalManual: qs('[name="totalManual"]', form).value, linea: '' });
+      qsa('.venta-item', form).forEach(function (row, i) { qs('.total-item', row).textContent = soles(items[i].total); });
+      $('ventaTotal').textContent = soles(tmp.total);
+      var aviso = $('ventaAviso'); aviso.hidden = !tmp.derivarB2B; aviso.textContent = tmp.derivarB2B ? 'Supera el umbral B2C: derivar a B2B, no suma a la cuota' : '';
+    }
+    form.addEventListener('input', function (ev) {
+      var el = ev.target;
+      if (el.getAttribute('data-item') === 'productoId') { var row = el.closest('.venta-item'); var p = cat.filter(function (x) { return x.id === el.value; })[0]; if (p) { qs('[data-item="nombre"]', row).value = p.nombre; var seg = qs('[name="segmento"]', form).value; qs('[data-item="precio"]', row).value = (seg === 'breca' && p.precioBreca != null ? p.precioBreca : p.precio) == null ? '' : (seg === 'breca' && p.precioBreca != null ? p.precioBreca : p.precio); } }
+      refrescarTotales();
+    });
+    form.addEventListener('click', function (ev) {
+      var q = ev.target.closest('[data-quitar]'); if (q) { q.closest('.venta-item').remove(); refrescarTotales(); return; }
+      if (ev.target.closest('[data-agregar-item]')) { var cont = $('ventaItems'); var div = document.createElement('div'); div.innerHTML = filaItem({ productoId: '', nombre: '', cantidad: 1, precio: '' }, cont.children.length); cont.appendChild(div.firstChild); return; }
+      if (ev.target.closest('[data-eliminar-venta]')) { if (window.confirm('¿Eliminar esta venta?')) { DB.eliminar('ventas', venta.id); cerrarModal(); toast('Venta eliminada'); refrescar(); if (opts.alGuardar) opts.alGuardar(null); } }
+    });
+    qs('[data-accion="cerrar"]', form).onclick = cerrarModal;
+    form.onsubmit = function (ev) {
+      ev.preventDefault(); var f = leerForm(form);
+      var items = leerItems().filter(function (it) { return it.cantidad > 0 || it.nombre; });
+      if (!items.length) { toast('Agrega al menos una línea', 'alerta'); return; }
+      var nueva = venta ? clonar(venta) : { id: nuevoId('v'), createdAt: ahoraISO() };
+      ['fecha', 'estado', 'fechaCierre', 'gancho', 'codigoOrigen', 'segmento', 'embajadorId', 'motivoPerdida', 'notas'].forEach(function (k) { nueva[k] = f[k]; });
+      nueva.fecha = isoDe(f.fecha) || hoy; nueva.fechaCierre = isoDe(f.fechaCierre); nueva.fechaEntrega = isoDe(f.fechaEntrega); nueva.personas = f.personas; nueva.totalManual = f.totalManual === '' ? null : Number(f.totalManual); nueva.items = items; nueva.linea = lineaDe(items);
+      if (!contacto && f.buscarContacto) { var txt = normTexto(f.buscarContacto.split(' · ')[0]); var dig = f.buscarContacto.replace(/\D/g, ''); var cc = DB.tabla('contactos').filter(function (x) { return normTexto(x.nombre) === txt || (dig.length >= 9 && telefonoDigitos(x.telefono) === dig); })[0]; if (cc) { nueva.contactoId = cc.id; if (!nueva.segmento) nueva.segmento = cc.segmento; } }
+      else if (contacto) nueva.contactoId = contacto.id;
+      if (!nueva.cuentaId && opts.cuentaId) nueva.cuentaId = opts.cuentaId;
+      normalizarVenta(nueva);
+      if (nueva.estado === 'perdido' && !nueva.motivoPerdida) { toast('Indica el motivo de pérdida', 'alerta'); return; }
+      DB.upsert('ventas', nueva);
+      var cFinal = nueva.contactoId ? DB.buscar('contactos', nueva.contactoId) : null;
+      if (cFinal) {
+        if (['pagado', 'entregado'].indexOf(nueva.estado) >= 0) marcarCompro(cFinal, nueva);
+        else if (nueva.estado === 'link_enviado' || nueva.estado === 'cotizado') marcarPropuesta(cFinal);
+        else if (nueva.estado === 'perdido' && opts.marcarPerdido) marcarPerdido(cFinal, nueva.motivoPerdida);
+        if (nueva.derivarB2B && nueva.estado !== 'perdido') { cFinal.estado = 'b2b'; cFinal.notas = ((cFinal.notas || '') + '\n' + fechaCorta(hoy) + ': derivado a B2B por la venta ' + nueva.id).trim(); DB.upsert('contactos', cFinal); }
+      }
+      cerrarModal(); toast(nueva.derivarB2B ? 'Guardado · marcado para derivar a B2B (no suma a la cuota)' : 'Venta guardada'); refrescar();
+      if (opts.alGuardar) opts.alGuardar(nueva);
+    };
+    refrescarTotales();
+  }
+
+  /* =========================== API de módulos =========================== */
+  function registrarPantalla(nombre, render) { if (PANTALLAS[nombre]) { PANTALLAS[nombre].render = render; PANTALLAS[nombre].modulo = true; } }
+
   /* =========================== Acciones globales =========================== */
   function leerArchivo(input, cb) {
     var f = input.files && input.files[0]; if (!f) return;
@@ -1471,14 +1714,20 @@ window.VDO_DATOS = (function () {
         DB.datos.calendario = nuevo; DB.guardar(); toast('Calendario recalculado'); break;
       }
       case 'limpiar-filtros': DB.datos.ui.filtros.contactos = null; DB.guardarPronto(); renderContactos(false); break;
+      case 'registrar-venta': formVenta(null, { contacto: el.getAttribute('data-id') ? DB.buscar('contactos', el.getAttribute('data-id')) : null }); break;
+      case 'editar-venta': { var vv = DB.buscar('ventas', el.getAttribute('data-id')); if (vv) formVenta(vv); break; }
       case 'cerrar': cerrarModal(); break;
+      default: if (ACCIONES_MODULO[accion]) ACCIONES_MODULO[accion](el);
     }
   }
+  var ACCIONES_MODULO = {};
+  function registrarAccion(nombre, fn) { ACCIONES_MODULO[nombre] = fn; }
 
   /* =========================== Arranque =========================== */
   function iniciar() {
     DB.cargar();
     if (DB.datos.ui.primeraVez) { DB.cargarPrueba(); DB.datos.ui.primeraVez = false; DB.guardar(); }
+    mantenimientoDiario();
     $('hoyFecha').textContent = fechaCorta(hoyISO());
     document.body.addEventListener('click', function (ev) {
       var el = ev.target.closest('[data-pantalla],[data-ir],[data-accion]');
@@ -1508,11 +1757,14 @@ window.VDO_DATOS = (function () {
   }
 
   window.VDO = {
-    DB: DB, util: { hoyISO: hoyISO, ahoraISO: ahoraISO, isoDe: isoDe, fechaValida: fechaValida, fechaCorta: fechaCorta, fechaLarga: fechaLarga, soles: soles, numero: numero, normTelefono: normTelefono, telefonoDigitos: telefonoDigitos, normCorreo: normCorreo, correoValido: correoValido, sumarDias: sumarDias, diasEntre: diasEntre, parseCSV: parseCSV, adivinarMapeo: adivinarMapeo, aCSV: aCSV, nuevoId: nuevoId, esc: esc },
-    reglas: { puedeIniciarOla: puedeIniciarOla, derivarB2B: derivarB2B, proximoToqueTras: proximoToqueTras, cadenciaDe: cadenciaDe, olaDe: olaDe, ganchosDe: ganchosDe, armarMensaje: armarMensaje, urlWhatsApp: urlWhatsApp, urlCorreo: urlCorreo, variablesDe: variablesDe, rellenar: rellenar },
+    DB: DB, cfg: cfg, DIAS: DIAS, MESES: MESES, ORDEN_ETAPAS: ORDEN_ETAPAS,
+    util: { hoyISO: hoyISO, ahoraISO: ahoraISO, isoDe: isoDe, fechaValida: fechaValida, fechaCorta: fechaCorta, fechaHora: fechaHora, fechaLarga: fechaLarga, diaSemana: diaSemana, mesDe: mesDe, nombreMes: nombreMes, soles: soles, entero: entero, pct: pct, numero: numero, normTelefono: normTelefono, telefonoDigitos: telefonoDigitos, normCorreo: normCorreo, correoValido: correoValido, normTexto: normTexto, primerNombre: primerNombre, sumarDias: sumarDias, diasEntre: diasEntre, parseCSV: parseCSV, adivinarMapeo: adivinarMapeo, aCSV: aCSV, columnasDe: columnasDe, descargar: descargar, nuevoId: nuevoId, clonar: clonar, esc: esc, attr: attr },
+    reglas: { puedeIniciarOla: puedeIniciarOla, derivarB2B: derivarB2B, proximoToqueTras: proximoToqueTras, cadenciaDe: cadenciaDe, tratoDe: tratoDe, olaDe: olaDe, ganchosDe: ganchosDe, ganchoTexto: ganchoTexto, armarMensaje: armarMensaje, urlWhatsApp: urlWhatsApp, urlCorreo: urlCorreo, variablesDe: variablesDe, rellenar: rellenar, precioDe: precioDe, segmentoDe: segmentoDe, nombreSegmento: nombreSegmento, nombreEtapa: nombreEtapa, diaCalendario: diaCalendario },
+    embudo: { plantillaPara: plantillaPara, marcarEnviado: marcarEnviado, marcarRespondio: marcarRespondio, marcarPropuesta: marcarPropuesta, marcarCompro: marcarCompro, marcarDormido: marcarDormido, marcarPerdido: marcarPerdido, registrarInteraccion: registrarInteraccion, ultimaInteraccion: ultimaInteraccion, mantenimientoDiario: mantenimientoDiario, colaDelDia: colaDelDia, resumenDia: resumenDia, avanzarEtapa: avanzarEtapa, generarCodigoReferido: generarCodigoReferido },
+    ventas: { formVenta: formVenta, catalogoVenta: catalogoVenta, normalizarVenta: normalizarVenta, totalVenta: totalVenta, lineaDe: lineaDe },
     importar: { fusionarContactos: fusionarContactos, filasAContactos: filasAContactos, asistenteCSV: asistenteCSV, importarJSONDialogo: importarJSONDialogo },
-    ui: { navegar: navegar, refrescar: refrescar, toast: toast, abrirModal: abrirModal, cerrarModal: cerrarModal, copiar: copiar, formContacto: formContacto },
-    generarCalendario: generarCalendario
+    ui: { navegar: navegar, refrescar: refrescar, toast: toast, abrirModal: abrirModal, cerrarModal: cerrarModal, confirmar: confirmar, copiar: copiar, formContacto: formContacto, formVenta: formVenta, opciones: opciones, opcionesSegmentos: opcionesSegmentos, opcionesEtapas: opcionesEtapas, campo: campo, inp: inp, leerForm: leerForm, $: $, qs: qs, qsa: qsa },
+    registrarPantalla: registrarPantalla, registrarAccion: registrarAccion, generarCalendario: generarCalendario
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
