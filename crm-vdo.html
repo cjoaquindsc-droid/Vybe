@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#080808">
+<title>CRM B2C · The Pisco Room · Viñas de Oro</title>
+<meta name="description" content="CRM operativo del canal B2C de Bodegas Viñas de Oro. Local, sin servidor: los datos viven en este navegador (localStorage).">
+<meta name="generador" content="herramientas/ensamblar.py · 2026-10-07">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23080808' stroke='%23d4af37' stroke-width='3'/%3E%3Ctext x='32' y='40' font-family='Futura,Arial' font-size='22' text-anchor='middle' fill='%23d4af37'%3EVdO%3C/text%3E%3C/svg%3E">
+<style>
+/* ============================================================================
+   crm-estilos.css · The Pisco Room · fondo negro, acentos dorados, versales
+   ========================================================================== */
+:root {
+  --negro: #080808; --fondo: #0d0d0d; --superficie: #151515; --superficie2: #1d1d1d; --superficie3: #262626;
+  --borde: #2b2b2b; --borde-oro: #5a4a1e; --oro: #d4af37; --oro-claro: #efd77a; --oro-suave: #8a7332; --oro-fondo: #1f1a0e;
+  --texto: #f3eee3; --texto2: #bdb5a4; --texto3: #83796a;
+  --ok: #7fcaa0; --ok-fondo: #12241b; --alerta: #e8826f; --alerta-fondo: #2b1613; --aviso: #e7c06a; --info: #93b7dc;
+  --titulos: "Futura", "Futura PT", "Avenir Next", "Century Gothic", "Jost", "Montserrat", "Josefin Sans", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
+  --cuerpo: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --radio: 4px; --sombra: 0 8px 30px rgba(0, 0, 0, .55);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--fondo); color: var(--texto); font: 15px/1.5 var(--cuerpo); min-height: 100vh; }
+body.con-modal { overflow: hidden; }
+a { color: var(--oro-claro); }
+h1, h2, h3, h4 { font-family: var(--titulos); font-weight: 600; text-transform: uppercase; letter-spacing: .16em; color: var(--oro); margin: 0; }
+h1 { font-size: 15px; letter-spacing: .2em; }
+h2 { font-size: 20px; }
+h3 { font-size: 12.5px; letter-spacing: .18em; color: var(--oro-claro); margin-bottom: 10px; }
+h4 { font-size: 11.5px; color: var(--texto2); margin: 14px 0 8px; }
+p { margin: 0 0 8px; }
+small { font-size: 12px; }
+code { font-family: var(--mono); font-size: 12.5px; background: var(--superficie2); padding: 1px 5px; border-radius: 3px; }
+.texto2 { color: var(--texto2); } .texto3 { color: var(--texto3); font-size: 12.5px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.izq { margin-right: auto; }
+.pad { padding: 12px 16px; }
+.bien { color: var(--ok); } .mal { color: var(--alerta); }
+
+/* ---------- barra superior ---------- */
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 18px; padding: 10px 20px; background: linear-gradient(180deg, #0b0b0b, #0e0e0e); border-bottom: 1px solid var(--borde-oro); }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border: 1.5px solid var(--oro); color: var(--oro); font-family: var(--titulos); font-size: 12px; letter-spacing: .12em; border-radius: 50%; flex: 0 0 auto; }
+.brand small { display: block; color: var(--texto3); letter-spacing: .08em; text-transform: uppercase; font-size: 10.5px; }
+.nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
+.nav button, .tabbar-movil button { appearance: none; background: none; border: none; border-bottom: 2px solid transparent; color: var(--texto2); font-family: var(--titulos); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; padding: 10px 12px; cursor: pointer; white-space: nowrap; }
+.nav button:hover { color: var(--texto); }
+.nav button.activa { color: var(--oro); border-bottom-color: var(--oro); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+#estadoGuardado { font-size: 11px; color: var(--texto3); letter-spacing: .06em; white-space: nowrap; }
+#estadoGuardado.error { color: var(--alerta); }
+.tabbar-movil { display: none; }
+
+/* ---------- contenedor ---------- */
+main { max-width: 1320px; margin: 0 auto; padding: 20px 16px 90px; }
+.pantalla[hidden] { display: none; }
+.cabecera-pantalla { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 18px; margin: 4px 0 16px; }
+.cabecera-pantalla .sub { color: var(--texto2); margin: 0; }
+.cabecera-pantalla .acciones { margin-left: auto; }
+.subnav { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; margin-top: 6px; }
+.subnav .btn.activa { background: var(--oro); color: #111; border-color: var(--oro); }
+
+/* ---------- tarjetas ---------- */
+.tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); padding: 16px 18px; margin-bottom: 16px; min-width: 0; }
+.tarjeta.sin-padding { padding: 0; }
+.tarjeta.oro { border-color: var(--borde-oro); background: linear-gradient(180deg, #171409, var(--superficie)); }
+.tarjeta.borde-alerta { border-color: #4a2420; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.grid-2 > .tarjeta { margin-bottom: 0; }
+.fila-sup { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.etiqueta { font-family: var(--titulos); font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--oro-suave); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 12px 0; }
+.kpi { background: var(--superficie2); border: 1px solid var(--borde); border-radius: var(--radio); padding: 10px 12px; }
+.kpi .lab { display: block; font-size: 11px; color: var(--texto3); letter-spacing: .06em; text-transform: uppercase; }
+.kpi .val { display: block; font-family: var(--titulos); font-size: 22px; color: var(--texto); letter-spacing: .02em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.kpi.mal .val { color: var(--alerta); }
+.cuotas { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- chips, pills ---------- */
+.chip { display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--borde-oro); color: var(--texto2); background: var(--oro-fondo); white-space: nowrap; }
+.chip b { color: var(--oro-claro); }
+.chip.seg-boca { border-color: #7a6520; } .chip.seg-recontacto { border-color: #6a5422; } .chip.seg-corporativo { border-color: #3f5570; } .chip.seg-breca { border-color: #7a4a22; } .chip.seg-pyme { border-color: #2f5a4a; } .chip.seg-grupos { border-color: #5a4a7a; } .chip.seg-piloto { border-color: #8a7a30; }
+.pill { display: inline-block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--borde); color: var(--texto2); }
+.pill.chica { font-size: 9.5px; padding: 1px 5px; }
+.pill.alerta { color: var(--alerta); border-color: var(--alerta); }
+.pill.ok { color: var(--ok); border-color: var(--ok); }
+
+/* ---------- botones ---------- */
+.btn { appearance: none; font-family: var(--titulos); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; padding: 9px 14px; border-radius: var(--radio); border: 1px solid var(--oro-suave); background: transparent; color: var(--oro-claro); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; line-height: 1.2; }
+.btn:hover { border-color: var(--oro); background: var(--oro-fondo); }
+.btn.primario { background: var(--oro); color: #111; border-color: var(--oro); font-weight: 700; }
+.btn.primario:hover { background: var(--oro-claro); }
+.btn.peligro { color: var(--alerta); border-color: #6b3a33; }
+.btn.peligro:hover { background: var(--alerta-fondo); border-color: var(--alerta); }
+.btn.chico { padding: 5px 9px; font-size: 10px; letter-spacing: .1em; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.acciones.col { flex-direction: column; align-items: stretch; }
+.acciones.col .btn { justify-content: center; text-align: center; }
+
+/* ---------- formularios ---------- */
+input, select, textarea { font: 14px/1.4 var(--cuerpo); color: var(--texto); background: var(--superficie2); border: 1px solid var(--borde); border-radius: var(--radio); padding: 8px 10px; width: 100%; min-width: 0; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--oro); box-shadow: 0 0 0 2px rgba(212, 175, 55, .18); }
+input[type="date"] { color-scheme: dark; }
+select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--oro-suave) 50%), linear-gradient(135deg, var(--oro-suave) 50%, transparent 50%); background-position: calc(100% - 16px) 55%, calc(100% - 11px) 55%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 28px; }
+textarea { resize: vertical; }
+.campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.campo > span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--texto3); }
+.campo small { color: var(--texto3); }
+.campo.ancho, .acciones.ancho { grid-column: 1 / -1; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; align-items: center; }
+.filtros input[type="search"] { grid-column: 1 / -1; }
+.tabla.edit input, .tabla.edit select, .tabla.edit textarea { padding: 5px 7px; font-size: 13px; }
+.tabla.edit td.num input { max-width: 110px; text-align: right; }
+.tabla.edit textarea { min-width: 220px; }
+
+/* ---------- tablas ---------- */
+.tabla-scroll { overflow-x: auto; }
+.tabla { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tabla th { text-align: left; font-family: var(--titulos); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--oro-suave); padding: 10px 12px; border-bottom: 1px solid var(--borde-oro); white-space: nowrap; }
+.tabla td { padding: 9px 12px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+.tabla tr:last-child td { border-bottom: none; }
+.tabla tr.hoy td { background: var(--oro-fondo); }
+.tabla tr.total td { font-weight: 600; color: var(--oro-claro); border-top: 1px solid var(--borde-oro); }
+.tabla.compacta td, .tabla.compacta th { padding: 5px 8px; font-size: 13px; }
+.tabla td.vacio { color: var(--texto3); text-align: center; padding: 28px; }
+.tabla .celda-larga { max-width: 460px; white-space: normal; }
+.acciones-fila { white-space: nowrap; text-align: right; }
+.acciones-fila .btn { margin-left: 4px; }
+.tabla.contactos tbody tr:hover td { background: var(--superficie2); }
+
+/* ---------- plantillas ---------- */
+.plantilla { border-bottom: 1px solid var(--borde); padding: 8px 0; }
+.plantilla summary { cursor: pointer; }
+.texto-plantilla { white-space: pre-wrap; font: 13.5px/1.5 var(--cuerpo); background: var(--superficie2); padding: 10px 12px; border-radius: var(--radio); border-left: 2px solid var(--oro-suave); margin: 8px 0 0; }
+
+/* ---------- modal ---------- */
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .72); display: flex; align-items: flex-start; justify-content: center; padding: 30px 16px; overflow-y: auto; }
+.modal[hidden] { display: none; }
+.modal-caja { position: relative; width: 100%; max-width: 560px; background: var(--superficie); border: 1px solid var(--borde-oro); border-radius: 6px; padding: 20px 22px; box-shadow: var(--sombra); }
+.modal.ancho .modal-caja { max-width: 980px; }
+.modal-cerrar { position: absolute; top: 8px; right: 10px; background: none; border: none; color: var(--texto3); font-size: 22px; cursor: pointer; line-height: 1; }
+.modal-cerrar:hover { color: var(--oro); }
+.modal h3 { margin-bottom: 12px; padding-right: 30px; }
+.lista-resumen { padding-left: 18px; }
+.ayuda { margin-top: 10px; color: var(--texto2); font-size: 13px; }
+.ayuda summary { cursor: pointer; color: var(--oro-claro); }
+.ayuda ul { padding-left: 18px; }
+
+/* ---------- toast ---------- */
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; background: #1b1b1b; color: var(--texto); border: 1px solid var(--oro-suave); border-radius: 4px; padding: 10px 16px; font-size: 13.5px; box-shadow: var(--sombra); max-width: 92vw; }
+.toast.alerta { border-color: var(--alerta); color: var(--alerta); }
+.toast[hidden] { display: none; }
+
+/* ---------- celular ---------- */
+@media (max-width: 820px) {
+  .topbar { padding: 8px 12px; gap: 10px; }
+  .nav { display: none; }
+  .tabbar-movil { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: #0b0b0b; border-top: 1px solid var(--borde-oro); overflow-x: auto; scrollbar-width: none; padding-bottom: env(safe-area-inset-bottom, 0); }
+  .tabbar-movil::-webkit-scrollbar { display: none; }
+  .tabbar-movil button { flex: 0 0 auto; padding: 12px 11px; font-size: 10px; border-bottom: none; border-top: 2px solid transparent; }
+  .tabbar-movil button.activa { color: var(--oro); border-top-color: var(--oro); }
+  main { padding: 14px 12px 84px; }
+  .cabecera-pantalla .acciones { margin-left: 0; width: 100%; }
+  .filtros { grid-template-columns: 1fr 1fr; }
+  .filtros input[type="search"] { grid-column: 1 / -1; }
+  .tabla.contactos thead, .tabla.edit thead { display: none; }
+  .tabla.contactos tr, .tabla.edit tr { display: block; border-bottom: 1px solid var(--borde); padding: 8px 0; }
+  .tabla.contactos td, .tabla.edit td { display: block; border: none; padding: 3px 12px; }
+  .tabla.contactos td[data-label]::before, .tabla.edit td[data-label]::before { content: attr(data-label) " · "; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--texto3); }
+  .tabla.contactos td.acciones-fila { text-align: left; padding-top: 8px; }
+  .tabla.edit td.num { text-align: left; }
+  .tabla.edit td.num input { max-width: none; text-align: left; }
+  .modal { padding: 0; align-items: stretch; }
+  .modal-caja, .modal.ancho .modal-caja { max-width: none; min-height: 100vh; border-radius: 0; border-left: none; border-right: none; }
+  .kpi .val { font-size: 19px; }
+}
+@media print { .topbar, .tabbar-movil, .acciones, .filtros { display: none !important; } body { background: #fff; color: #000; } .tarjeta { border-color: #ccc; background: #fff; } h1, h2, h3 { color: #000; } }
+
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">VdO</span>
+    <div><h1>The Pisco Room · CRM B2C</h1><small>Viñas de Oro · Q4 2026 · <span id="hoyFecha"></span></small></div>
+  </div>
+  <nav class="nav" aria-label="Pantallas">
+    <button data-pantalla="hoy">Hoy</button>
+    <button data-pantalla="calendario">Calendario</button>
+    <button data-pantalla="contactos">Contactos</button>
+    <button data-pantalla="pipeline">Pipeline</button>
+    <button data-pantalla="ventas">Ventas</button>
+    <button data-pantalla="metricas">Métricas</button>
+    <button data-pantalla="plantillas">Plantillas</button>
+    <button data-pantalla="reporte">Reporte</button>
+    <button data-pantalla="ajustes">Ajustes</button>
+  </nav>
+  <div class="topbar-right"><span id="estadoGuardado"></span></div>
+</header>
+
+<main id="main">
+  <section id="p-hoy" class="pantalla" hidden></section>
+  <section id="p-calendario" class="pantalla" hidden></section>
+  <section id="p-contactos" class="pantalla" hidden></section>
+  <section id="p-pipeline" class="pantalla" hidden></section>
+  <section id="p-ventas" class="pantalla" hidden></section>
+  <section id="p-metricas" class="pantalla" hidden></section>
+  <section id="p-plantillas" class="pantalla" hidden></section>
+  <section id="p-reporte" class="pantalla" hidden></section>
+  <section id="p-ajustes" class="pantalla" hidden></section>
+</main>
+
+<nav class="tabbar-movil" aria-label="Pantallas (celular)">
+  <button data-pantalla="hoy">Hoy</button>
+  <button data-pantalla="calendario">Calendario</button>
+  <button data-pantalla="contactos">Contactos</button>
+  <button data-pantalla="pipeline">Pipeline</button>
+  <button data-pantalla="ventas">Ventas</button>
+  <button data-pantalla="metricas">Métricas</button>
+  <button data-pantalla="plantillas">Plantillas</button>
+  <button data-pantalla="reporte">Reporte</button>
+  <button data-pantalla="ajustes">Ajustes</button>
+</nav>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-caja">
+    <button class="modal-cerrar" aria-label="Cerrar">&times;</button>
+    <div id="modalContenido"></div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+<input type="file" id="archivoCsv" accept=".csv,.txt,.tsv" hidden>
+<input type="file" id="archivoJson" accept=".json,application/json" hidden>
+
+<script>
+/* ============================================================================
+   crm-datos.js · Datos precargados del CRM B2C
+   Bodegas Viñas de Oro · The Pisco Room (Westin Lima)
+   Fuentes: "Plan de captación B2C · Q4 2026 · S/ 200,000 con mix 60/40"
+   (05/10/2026) y especificación de Joaquín Díaz (07/10/2026).
+   Lo marcado estado:'por_confirmar' o 'pendiente' no viene cerrado en el plan.
+   ========================================================================== */
+window.VDO_DATOS = (function () {
+  'use strict';
+
+  var EMPRESA = {
+    nombre: 'Bodegas Viñas de Oro',
+    marca: 'The Pisco Room by Viñas de Oro',
+    responsable: 'Joaquín Díaz',
+    cargo: 'Digital Sales & Partnerships',
+    firma: 'Joaquín Díaz · The Pisco Room by Viñas de Oro',
+    telefonoEmpresa: '+51 979 572 979',
+    correo: 'cdiaz@bvo.com.pe',
+    lugar: 'The Pisco Room · Hotel Westin Lima, primer nivel, San Isidro',
+    recojo: 'Amador Merino Reyna 551, San Isidro',
+    zonaHoraria: 'America/Lima',
+    periodo: { desde: '2026-10-01', hasta: '2026-12-31' },
+    calendario: { desde: '2026-10-07', hasta: '2026-12-31', diasLibres: ['2026-12-25'] }
+  };
+
+  /* ---------- Segmentos ---------- */
+  var SEGMENTOS = [
+    { codigo: 'boca', nombre: 'Boca a boca', num: '1', detalle: 'Red personal · 100 contactos', grupo: 'consumidor', cadencia: 'consumidor', trato: 'tu', color: '#d4af37' },
+    { codigo: 'recontacto', nombre: 'Recontacto WhatsApp Business', num: '1', detalle: 'Unos 1,000 que ya nos escribieron', grupo: 'consumidor', cadencia: 'consumidor', trato: 'usted', color: '#b58d2a' },
+    { codigo: 'corporativo', nombre: 'Corporativo', num: '2', detalle: 'BCP, Yape, Interbank, Scotiabank, Pacífico, Mibanco, Prima AFP', grupo: 'empresa', cadencia: 'empresa', trato: 'usted', color: '#8fa3bf',
+      empresas: ['BCP', 'Yape', 'Interbank', 'Scotiabank', 'Pacífico', 'Mibanco', 'Prima AFP'] },
+    { codigo: 'breca', nombre: 'Grupo Breca', num: '3', detalle: '134 colaboradores en Perú (Melón, en Chile, se excluye)', grupo: 'consumidor', cadencia: 'consumidor', trato: 'usted', color: '#c97c3a',
+      empresas: ['Rímac', 'Centria', 'Intursa', 'Urbanova', 'Tasa', 'Minsur', 'FBM', 'Safresco', 'IRM Soluciones', 'Breca corporativo', 'BBVA', 'Clínica Internacional', 'Melón (Chile · excluida)'] },
+    { codigo: 'pyme', nombre: 'Empresas pequeñas y medianas', num: '4', detalle: 'Decisores que regalan a 5–10 clientes', grupo: 'empresa', cadencia: 'empresa', trato: 'usted', color: '#7fb3a0' },
+    { codigo: 'grupos', nombre: 'Grupos corporativos 20–40 personas', num: '5', detalle: 'Agencias de eventos (Ancona, Gestión Humana) y alianzas', grupo: 'empresa', cadencia: 'empresa', trato: 'usted', color: '#a98ccf',
+      empresas: ['Ancona', 'Gestión Humana', 'Universitario (socios)', 'Club Toyota', 'BCP (beneficios)'] },
+    { codigo: 'piloto', nombre: 'Piloto Chiclayo y Santa Cruz', num: 'P', detalle: 'Embajadores y hotel', grupo: 'consumidor', cadencia: 'consumidor', trato: 'tu', color: '#e0c36a',
+      subsegmentos: ['Embajador', 'Candidato a embajador', 'Hotel', 'Cliente de embajador'], ciudades: ['Chiclayo', 'Santa Cruz', 'Cusco', 'Ica', 'Trujillo', 'Arequipa', 'Piura'] }
+  ];
+
+  var ETAPAS = [
+    { codigo: 'atraer', nombre: 'Atraer', detalle: 'Está en la base, aún sin mensaje de esta ola' },
+    { codigo: 'iniciar', nombre: 'Iniciar', detalle: 'Primer mensaje enviado, esperando respuesta' },
+    { codigo: 'calificar', nombre: 'Calificar', detalle: 'Respondió: ocasión y número de personas' },
+    { codigo: 'proponer', nombre: 'Proponer', detalle: 'Total en soles + link de pago enviado' },
+    { codigo: 'cerrar', nombre: 'Cerrar', detalle: 'Pago confirmado y fecha de entrega' },
+    { codigo: 'fidelizar', nombre: 'Fidelizar', detalle: 'Agradecimiento, foto y código de referido' }
+  ];
+  var ESTADOS_CONTACTO = ['activo', 'dormido', 'perdido', 'b2b'];
+
+  var CADENCIAS = { consumidor: [0, 2, 5], empresa: [0, 3, 7] };
+
+  var REGLAS = {
+    maxToques: 3,
+    diasBloqueo: 7,            // no escribir a nadie contactado en los últimos 7 días
+    diasEntreOlas: 21,         // máximo un mensaje de ola por persona cada tres semanas
+    umbralBotellasB2B: 12,     // más de 12 botellas → derivar a B2B
+    umbralSolesB2B: 1500,      // más de S/ 1,500 → derivar a B2B
+    umbralB2BEstado: 'por_confirmar', // el PDF lo deja como propuesta a confirmar con Renato
+    comisionBase: 0.10,
+    comisionAlta: 0.15,
+    umbralComisionMes: 1500,
+    deliveryGratisDesde: 400,
+    delivery: 15,
+    descuentoBrecaExperiencias: 0.25,
+    descuentoBrecaBase: 'por_confirmar', // sobre qué precio aplica el 25 % (pregunta abierta del plan)
+    diasPostVenta: 3,          // mensaje de post-venta al tercer día de la entrega
+    leyendasEnMasivos: true
+  };
+
+  var LEYENDAS = ['Tomar bebidas alcohólicas en exceso es dañino', 'Venta prohibida a menores de 18 años'];
+
+  /* ---------- Precios de octubre 2026 ---------- */
+  var PRODUCTOS = [
+    { id: 'silver700', nombre: 'Silver 700 ml', linea: 'botellas', ml: 700, b2c: 74.90, supermercado: 99.90, breca: 67.40, codigo: '50006033', estado: 'vigente', nota: 'El plan del 05/10 lo ancla en S/ 69.90; precio de octubre confirmado por Joaquín en S/ 74.90' },
+    { id: 'gold700', nombre: 'Gold 700 ml', linea: 'botellas', ml: 700, b2c: 89.90, supermercado: 119.90, breca: 80.90, codigo: '50006041', estado: 'vigente' },
+    { id: 'tasting', nombre: 'Tasting Box (3 × 150 ml)', linea: 'botellas', ml: 450, b2c: 69.90, supermercado: null, breca: 62.90, codigo: '50006222', estado: 'vigente' },
+    { id: 'minigold', nombre: 'Mini Gold 50 ml', linea: 'botellas', ml: 50, b2c: 19.90, supermercado: null, breca: 17.90, codigo: '50006052', estado: 'vigente', notaBreca: 'Precio Breca de setiembre; octubre por confirmar' },
+    { id: 'ede500', nombre: 'Edición Especial 500 ml', linea: 'botellas', ml: 500, b2c: 99.90, supermercado: null, breca: 89.90, codigo: '50006058', estado: 'vigente', notaBreca: 'Precio Breca de setiembre; octubre por confirmar' },
+    { id: 'blue710', nombre: 'Blue 710 ml', linea: 'botellas', ml: 710, b2c: 399.90, supermercado: null, breca: 379.90, codigo: '50006752', estado: 'vigente' }
+  ];
+
+  var PACKS = [
+    { id: 'tripack', nombre: 'Tripack Silver (3 × 700 ml)', botellas: 3, precio: 189.90, anaquel: 299.70, estado: 'por_confirmar', fuente: 'Plan p.11, pieza Catálogo de bolsillo (desde el 12/10)' },
+    { id: 'sixpack', nombre: 'Sixpack Silver (6 × 700 ml)', botellas: 6, precio: 334.90, anaquel: 599.40, estado: 'por_confirmar', fuente: 'Plan p.11, pieza Catálogo de bolsillo (desde el 12/10)' },
+    { id: 'fivepack', nombre: 'Five Pack Gold (5 × 700 ml)', botellas: 5, precio: 399.90, anaquel: null, estado: 'por_confirmar', fuente: 'Catálogo de setiembre' }
+  ];
+
+  var EXPERIENCIAS = [
+    { id: 'catador', nombre: 'Experto Catador', precio: 150, codigo: '70001139' },
+    { id: 'coctelero', nombre: 'Experto Coctelero', precio: 200, codigo: '70001140' },
+    { id: 'arte_pisco', nombre: 'El Arte del Pisco', precio: 290, codigo: '70001138' },
+    { id: 'arte_cocteleria', nombre: 'El Arte de la Coctelería', precio: 330, codigo: '70001140' },
+    { id: 'master', nombre: 'Master of Pisco', precio: 420, codigo: '70001141' }
+  ];
+
+  var PAQUETES_GRUPO = [
+    { id: 'esencial', nombre: 'Esencial', precio30: 9090, personasBase: 30, incluye: 'Salón del Westin incluido', estado: 'por_confirmar' },
+    { id: 'coctelero', nombre: 'Coctelero', precio30: 10290, personasBase: 30, incluye: 'Salón del Westin incluido', estado: 'por_confirmar' },
+    { id: 'signature', nombre: 'Signature', precio30: 12990, personasBase: 30, incluye: 'Salón del Westin incluido', estado: 'por_confirmar' }
+  ];
+
+  /* ---------- Olas y ganchos (sin bajar precio) ---------- */
+  var OLAS = [
+    { n: 1, nombre: 'Ola 1 · Montar', desde: '2026-10-07', hasta: '2026-10-24' },
+    { n: 2, nombre: 'Ola 2 · Escalar (grabado)', desde: '2026-10-26', hasta: '2026-11-20' },
+    { n: 3, nombre: 'Ola 3 · Cosechar (regalo listo)', desde: '2026-11-23', hasta: '2026-12-23' },
+    { n: 4, nombre: 'Cierre del trimestre', desde: '2026-12-24', hasta: '2026-12-31' }
+  ];
+
+  var GANCHOS = [
+    { id: 'ola1_minigold', ola: 1, desde: '2026-10-07', hasta: '2026-10-24', nombre: 'Mini Gold de regalo desde S/ 300',
+      texto: 'Mini Gold 50 ml de regalo en compras desde S/ 300', condicion: 'Compras de botellas desde S/ 300; sin descuento', estado: 'pendiente' },
+    { id: 'ola1_sala', ola: 1, desde: '2026-10-07', hasta: '2026-10-24', nombre: 'Sala exclusiva de cortesía (mar–jue, 2+)',
+      texto: 'sala exclusiva de cortesía de martes a jueves para 2 o más personas', condicion: 'Reservas de martes a jueves para 2 o más; sujeto a disponibilidad', estado: 'pendiente' },
+    { id: 'ola2_grabado', ola: 2, desde: '2026-10-26', hasta: '2026-11-20', nombre: 'Grabado del nombre sin costo (cierre 20/11)',
+      texto: 'grabado del nombre sin costo en Gold y Blue; los pedidos con grabado para entrega en diciembre se cierran el 20 de noviembre', condicion: 'Precio y capacidad del grabado por confirmar con Canchari', estado: 'pendiente' },
+    { id: 'ola3_regalo', ola: 3, desde: '2026-11-23', hasta: '2026-12-23', nombre: 'Regalo listo con entrega antes del 23/12',
+      texto: 'regalo listo, con botella con nombre y tarjeta, entregado antes del 23 de diciembre', condicion: 'Entregas en Lima hasta el 23/12', estado: 'pendiente' }
+  ];
+
+  /* ---------- Metas ---------- */
+  var METAS = {
+    total: 200000,
+    cuotaOficial: { '2026-10': 35000, '2026-11': 38000, '2026-12': 55000 },
+    proyeccion: { '2026-10': 50000, '2026-11': 65000, '2026-12': 85000 },
+    mix: { botellas: 0.60, experiencia: 0.40 },
+    proyeccionLinea: {
+      botellas: { '2026-10': 30000, '2026-11': 39000, '2026-12': 51000 },
+      experiencia: { '2026-10': 20000, '2026-11': 26000, '2026-12': 34000 }
+    },
+    lineasPlan: [
+      { codigo: 'B1', nombre: 'Lima directo: entrantes, recontacto, recompra y referidos', linea: 'botellas', meses: { '2026-10': 12000, '2026-11': 13500, '2026-12': 16500 }, ticket: 250 },
+      { codigo: 'B2', nombre: 'Provincias: red de embajadores', linea: 'botellas', meses: { '2026-10': 4000, '2026-11': 9000, '2026-12': 13000 }, ticket: 200 },
+      { codigo: 'B3', nombre: 'Colaboradores Breca', linea: 'botellas', meses: { '2026-10': 6500, '2026-11': 6500, '2026-12': 7000 }, ticket: 300 },
+      { codigo: 'B4', nombre: 'Regalo de fin de año (personas y empresas pequeñas)', linea: 'botellas', meses: { '2026-10': 5000, '2026-11': 7000, '2026-12': 10500 }, ticket: 750 },
+      { codigo: 'B5', nombre: 'Botella al cierre del tour', linea: 'botellas', meses: { '2026-10': 2500, '2026-11': 3000, '2026-12': 4000 }, ticket: 90 },
+      { codigo: 'A1', nombre: 'Recontacto y entrantes de Lima', linea: 'experiencia', meses: { '2026-10': 12000, '2026-11': 14000, '2026-12': 16000 }, ticket: 215 },
+      { codigo: 'A2', nombre: 'Colaboradores Breca (25 %)', linea: 'experiencia', meses: { '2026-10': 3000, '2026-11': 4000, '2026-12': 5000 }, ticket: 215 },
+      { codigo: 'A3', nombre: 'Grupos de alianzas y empresas', linea: 'experiencia', meses: { '2026-10': 3000, '2026-11': 5000, '2026-12': 8000 }, ticket: 215 },
+      { codigo: 'A4', nombre: 'Experiencia para regalar', linea: 'experiencia', meses: { '2026-10': 2000, '2026-11': 3000, '2026-12': 5000 }, ticket: 215 }
+    ],
+    pesoDia: [0, 1, 1, 1, 1, 1, 0.7], // domingo..sábado (domingo no se atiende)
+    ventaPrevia: { '2026-10': 0 }       // venta del 01 al 06/10 por descontar (pregunta abierta del plan)
+  };
+
+  /* ---------- Tasas del plan (respuesta y compra sobre personas contactadas) ---------- */
+  var TASAS_PLAN = {
+    recontacto: { respuesta: 0.15, compra: 0.03, fuente: 'Especificación' },
+    boca: { respuesta: 0.40, compra: 0.065, fuente: 'Especificación (el plan p.4 usa 35 % y ~5 % para Personal 1:1)' },
+    breca: { respuesta: 0.40, compra: 0.10, fuente: 'Plan p.4, Breca uno a uno' },
+    corporativo: { respuesta: 0.25, compra: 0.05, fuente: 'Plan p.4, prospección de regalo (25 % / 20 %)' },
+    pyme: { respuesta: 0.25, compra: 0.05, fuente: 'Plan p.4, prospección de regalo (25 % / 20 %)' },
+    grupos: { respuesta: 0.25, compra: 0.0625, fuente: 'Supuesto: 25 % de las conversaciones cierran (plan p.5, alianzas)' },
+    piloto: { respuesta: 0.05, compra: 0.015, fuente: 'Plan p.4, embajadores (5 % / 30 %)' }
+  };
+
+  /* ---------- Cortes de control y fechas clave ---------- */
+  var CORTES = [
+    { fecha: '2026-10-19', nombre: 'Corte de control con origen', fuente: 'Plan (Gantt)' },
+    { fecha: '2026-10-31', nombre: 'Corte de octubre', fuente: 'Especificación' },
+    { fecha: '2026-11-07', nombre: 'Corte tras Cyber Wow', fuente: 'Especificación' },
+    { fecha: '2026-11-09', nombre: 'Corte de embajadores (se queda quien vendió)', fuente: 'Plan (Gantt)' },
+    { fecha: '2026-11-16', nombre: 'Corte previo al cierre de grabado', fuente: 'Especificación' },
+    { fecha: '2026-11-30', nombre: 'Corte de noviembre', fuente: 'Especificación' },
+    { fecha: '2026-12-14', nombre: 'Corte previo a gratificación', fuente: 'Especificación' },
+    { fecha: '2026-12-31', nombre: 'Cierre del trimestre', fuente: 'Especificación' }
+  ];
+
+  var FECHAS_CLAVE = [
+    { fecha: '2026-10-08', texto: 'Master of Pisco con Universitario (convenio socios adherentes)', tipo: 'hito' },
+    { fecha: '2026-10-12', texto: 'Kit y grupo de embajadores · sale el Catálogo de bolsillo', tipo: 'hito' },
+    { fecha: '2026-10-19', texto: 'Corte de control con origen · arranca la pieza Regalo con nombre', tipo: 'corte' },
+    { fecha: '2026-10-26', hasta: '2026-10-31', texto: 'Pieza Canción Criolla: Tripack para la noche del 31', tipo: 'periodo' },
+    { fecha: '2026-10-31', texto: 'Canción Criolla', tipo: 'alerta' },
+    { fecha: '2026-11-02', hasta: '2026-11-05', texto: 'Cyber Wow (Mini Gold de regalo desde S/ 300, sin descuento)', tipo: 'alerta' },
+    { fecha: '2026-11-02', texto: 'Ola 2 de embajadores', tipo: 'hito' },
+    { fecha: '2026-11-06', texto: 'Último despacho a Chiclayo y Santa Cruz', tipo: 'alerta' },
+    { fecha: '2026-11-09', texto: 'Corte de embajadores', tipo: 'corte' },
+    { fecha: '2026-11-12', texto: 'Evento Ancona / Lenovo', tipo: 'alerta' },
+    { fecha: '2026-11-13', hasta: '2026-11-14', texto: 'Visita del Papa · activación del hotel', tipo: 'alerta' },
+    { fecha: '2026-11-20', texto: 'Cierre de grabado: último día para pedidos con nombre', tipo: 'alerta' },
+    { fecha: '2026-12-01', hasta: '2026-12-23', texto: 'Entregas de regalo', tipo: 'periodo' },
+    { fecha: '2026-12-15', texto: 'Gratificación', tipo: 'alerta' },
+    { fecha: '2026-12-23', texto: 'Últimas entregas', tipo: 'alerta' },
+    { fecha: '2026-12-24', texto: 'Nochebuena', tipo: 'hito' },
+    { fecha: '2026-12-31', texto: 'Cierre del trimestre', tipo: 'corte' }
+  ];
+
+  /* ---------- Calendario: foco por semana y volumen por ola ---------- */
+  var SEMANAS = [
+    { desde: '2026-10-07', hasta: '2026-10-10', foco: 'Montar: retomar la cola del corte del 04/10 y arrancar G2 Crítica y Alta (20 por día). Lista de 30 candidatos a embajador. Pedir a RR. HH. de cada empresa Breca que difunda el beneficio. Brief de las piezas 1 y 3.' },
+    { desde: '2026-10-12', hasta: '2026-10-17', foco: 'Kit y grupo de embajadores (12/10). Sale el Catálogo de bolsillo en estados y grupos. G2 Media y recompra. Arranca la venta de embajadores en Chiclayo, Cusco e Ica.' },
+    { desde: '2026-10-19', hasta: '2026-10-24', foco: 'Corte de control con origen (19/10): recalibrar tasas. Arranca la pieza Regalo con nombre y la prospección de regalo de fin de año. Cierre de la ola 1.' },
+    { desde: '2026-10-26', hasta: '2026-10-31', foco: 'Ola 2: grabado del nombre. Pieza Canción Criolla (Tripack para la noche del 31). Prospección de regalo a empresas pequeñas y corporativo.' },
+    { desde: '2026-11-02', hasta: '2026-11-07', foco: 'Cyber Wow (02 al 05/11): Mini Gold de regalo desde S/ 300, sin descuento. Ola 2 de embajadores. Último despacho a Chiclayo y Santa Cruz el 06/11.' },
+    { desde: '2026-11-09', hasta: '2026-11-14', foco: 'Corte de embajadores (09/11). Evento Ancona / Lenovo (12/11). Visita del Papa y activación del hotel (13 y 14/11). Empujar pedidos con grabado.' },
+    { desde: '2026-11-16', hasta: '2026-11-21', foco: 'Última semana de grabado: cierre el 20/11. Confirmar nombres, cantidades y pagos de todos los pedidos con nombre.' },
+    { desde: '2026-11-23', hasta: '2026-11-28', foco: 'Ola 3: regalo listo. Tarjeta digital de experiencia para regalar. Confirmar entregas de diciembre y capacidad de Canchari.' },
+    { desde: '2026-11-30', hasta: '2026-12-05', foco: 'Arrancan las entregas de regalo. Corte de noviembre (30/11). Recontacto de compradores de octubre con la experiencia para regalar.' },
+    { desde: '2026-12-07', hasta: '2026-12-12', foco: 'Entregas de regalo y reservas de la sala para diciembre. Mensaje de gratificación (15/12) a red personal y Breca.' },
+    { desde: '2026-12-14', hasta: '2026-12-19', foco: 'Corte previo a gratificación (14/12). Gratificación (15/12): última ola de botellas y experiencias para regalar. Confirmar últimas entregas.' },
+    { desde: '2026-12-21', hasta: '2026-12-24', foco: 'Últimas entregas (23/12) y Nochebuena. Solo pedidos con entrega confirmada.' },
+    { desde: '2026-12-26', hasta: '2026-12-31', foco: 'Cierre del trimestre: agradecimientos, fotos y códigos de referido. Reporte final y plan de enero.' }
+  ];
+
+  // Contactos por día según la ola (lunes a viernes; sábado a la mitad)
+  var VOLUMEN_OLA = {
+    1: { recontacto: 100, boca: 30, breca: 38, corporativo: 6, pyme: 10, grupos: 3, piloto: 5 },
+    2: { recontacto: 60, boca: 20, breca: 30, corporativo: 8, pyme: 20, grupos: 4, piloto: 8 },
+    3: { recontacto: 60, boca: 20, breca: 25, corporativo: 4, pyme: 15, grupos: 2, piloto: 8 },
+    4: { recontacto: 30, boca: 15, breca: 10, corporativo: 0, pyme: 0, grupos: 0, piloto: 4 }
+  };
+
+  /* ---------- Plantillas (variables: {nombre} {empresa} {ocasion} {codigo} {gancho} {ciudad} {personas} {producto}
+       {precio_silver} {precio_gold} {precio_blue} {precio_breca_silver} {precio_breca_gold} {precio_breca_blue} {firma} {link}) ---------- */
+  var PLANTILLAS = [
+    // Recontacto WhatsApp Business (ya nos escribieron · usted)
+    { id: 'recontacto_t1', segmento: 'recontacto', toque: 1, ola: 0, canal: 'whatsapp', masivo: true, nombre: 'Recontacto · toque 1',
+      texto: 'Hola {nombre}, le saluda Joaquín de The Pisco Room by Viñas de Oro. Nos escribió hace unas semanas y quería retomar la conversación con una novedad de este mes: {gancho}. ¿Le gustaría que le arme una propuesta para {ocasion}? Le envío el total en soles y el link de pago en un solo mensaje.' },
+    { id: 'recontacto_t2', segmento: 'recontacto', toque: 2, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Recontacto · toque 2 (+2 días)',
+      texto: '{nombre}, le escribo de nuevo por si el mensaje anterior quedó entre los pendientes. Para {ocasion}, lo que más piden es el Silver 700 ml a S/ {precio_silver} (S/ 99.90 en supermercado) y la experiencia El Arte del Pisco para dos en la sala del Westin. ¿Prefiere botellas o la sala?' },
+    { id: 'recontacto_t3', segmento: 'recontacto', toque: 3, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Recontacto · toque 3 (+5 días, último)',
+      texto: '{nombre}, este es mi último mensaje por ahora, para no insistir. Si en algún momento quiere reservar la sala en el Westin o separar botellas con entrega en Lima, me escribe por aquí y lo atiendo yo mismo. Gracias por su tiempo.' },
+
+    // Boca a boca · red personal (tú)
+    { id: 'boca_t1', segmento: 'boca', toque: 1, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Red personal · toque 1',
+      texto: 'Hola {nombre}, ¿cómo estás? Te cuento algo que estoy armando en The Pisco Room, la sala de Viñas de Oro en el Westin: {gancho}. Si tienes algo que celebrar o alguien a quien regalar en estos meses, te armo una propuesta. Usa mi código {codigo} y te paso el total con link de pago.' },
+    { id: 'boca_t2', segmento: 'boca', toque: 2, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Red personal · toque 2 (+2 días)',
+      texto: '{nombre}, te dejo dos ideas concretas por si te sirven: el Silver 700 ml a S/ {precio_silver} (S/ 99.90 en supermercado) y la experiencia El Arte del Pisco para dos en la sala. ¿Te armo alguna?' },
+    { id: 'boca_t3', segmento: 'boca', toque: 3, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Red personal · toque 3 (+5 días, último)',
+      texto: '{nombre}, no quiero saturarte. Si más adelante te animas, me escribes y lo coordino yo. Y si conoces a alguien que quiera conocer la sala, pásale mi código {codigo}: cada amigo que compre con tu código te gana una Mini Gold 50 ml.' },
+
+    // Grupo Breca (colaboradores · usted)
+    { id: 'breca_t1', segmento: 'breca', toque: 1, ola: 0, canal: 'whatsapp', masivo: true, nombre: 'Breca · toque 1',
+      texto: 'Buenos días {nombre}, le saluda Joaquín Díaz de Viñas de Oro, empresa del grupo. Como colaborador de {empresa} tiene precio de colaborador en nuestras botellas (Silver 700 ml a S/ {precio_breca_silver}, Gold a S/ {precio_breca_gold}, Blue a S/ {precio_breca_blue}) y 25 % en las experiencias de The Pisco Room en el Westin. ¿Quiere que le arme una propuesta para {ocasion}? Le envío el total y el link de pago, con entrega en su oficina el día de reparto de la semana.' },
+    { id: 'breca_t2', segmento: 'breca', toque: 2, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Breca · toque 2 (+2 días)',
+      texto: '{nombre}, le recuerdo el beneficio de colaborador de {empresa}: botellas con precio de colaborador y 25 % en la sala. Si me confirma hoy, su pedido entra en el reparto de la semana a su oficina. ¿Le armo algo para {ocasion}?' },
+    { id: 'breca_t3', segmento: 'breca', toque: 3, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Breca · toque 3 (+5 días, último)',
+      texto: '{nombre}, último mensaje por mi parte. El beneficio de colaborador queda abierto todo el trimestre: cuando quiera usarlo, me escribe por aquí con su nombre y empresa y lo atiendo yo. Gracias.' },
+
+    // Corporativo (correo + WhatsApp · usted)
+    { id: 'corporativo_t1_correo', segmento: 'corporativo', toque: 1, ola: 0, canal: 'correo', masivo: false, nombre: 'Corporativo · toque 1 (correo)',
+      asunto: 'Regalos de fin de año con nombre · {empresa}',
+      texto: 'Estimado/a {nombre}:\n\nLe escribo de Bodegas Viñas de Oro. Para {empresa} proponemos un regalo de fin de año que no se repite: Gold 700 ml o Blue 710 ml con el nombre de quien lo recibe grabado en la botella, entregado en caja y con tarjeta. {gancho}.\n\nReferencia de precios: Gold a S/ {precio_gold} y Blue a S/ {precio_blue} por botella. Los pedidos con grabado para entrega en diciembre se cierran el 20 de noviembre.\n\n¿Le parece una llamada de 15 minutos esta semana para ver cantidades y nombres? Con ese dato le envío la propuesta con el total en soles.\n\nSaludos cordiales,\n{firma}' },
+    { id: 'corporativo_t1', segmento: 'corporativo', toque: 1, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Corporativo · toque 1 (WhatsApp)',
+      texto: 'Hola {nombre}, le saluda Joaquín Díaz de Viñas de Oro. Le envié un correo con la propuesta de regalos de fin de año con nombre grabado para {empresa} (Gold a S/ {precio_gold}, Blue a S/ {precio_blue}). Los pedidos con grabado se cierran el 20 de noviembre. ¿Tiene 15 minutos esta semana para ver cantidades?' },
+    { id: 'corporativo_t2', segmento: 'corporativo', toque: 2, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Corporativo · toque 2 (+3 días)',
+      texto: '{nombre}, retomo la propuesta de regalos para {empresa}. Si me indica cuántas personas tiene en la lista, le envío hoy mismo el total en soles con el link de pago o la orden de compra, según prefiera.' },
+    { id: 'corporativo_t3', segmento: 'corporativo', toque: 3, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Corporativo · toque 3 (+7 días, último)',
+      texto: '{nombre}, cierro el tema por ahora para no insistir. Si {empresa} decide regalar botellas con nombre este año, el cierre de grabado es el 20 de noviembre; me escribe y lo armamos en el día. Gracias por su tiempo.' },
+
+    // Pymes (decisores · usted)
+    { id: 'pyme_t1', segmento: 'pyme', toque: 1, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Pymes · toque 1',
+      texto: 'Hola {nombre}, le saluda Joaquín Díaz de Viñas de Oro. Para {empresa} armamos regalos de fin de año con nombre grabado: Gold 700 ml a S/ {precio_gold} y Blue a S/ {precio_blue}, una botella personalizada para cada cliente. {gancho}. ¿Cuántas personas tiene en su lista? Con ese número le envío el total y el link de pago.' },
+    { id: 'pyme_t2', segmento: 'pyme', toque: 2, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Pymes · toque 2 (+3 días)',
+      texto: '{nombre}, le dejo una referencia para decidir rápido: 10 Gold grabados para sus clientes son S/ {total_10_gold}, con entrega en su oficina. Los pedidos con grabado se cierran el 20 de noviembre. ¿Le armo la propuesta con sus nombres?' },
+    { id: 'pyme_t3', segmento: 'pyme', toque: 3, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Pymes · toque 3 (+7 días, último)',
+      texto: '{nombre}, último mensaje por mi parte. Si más adelante quiere regalar botellas con nombre a sus clientes, me escribe y lo coordino en el día. Gracias.' },
+
+    // Grupos corporativos y alianzas (usted)
+    { id: 'grupos_t1', segmento: 'grupos', toque: 1, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Grupos · toque 1',
+      texto: 'Hola {nombre}, le saluda Joaquín de The Pisco Room, la sala de Viñas de Oro en el Westin Lima. Para grupos de {personas} personas armamos una experiencia privada de pisco y coctelería con salón del hotel incluido, cotizada por persona y con fecha cerrada. ¿Tiene en mente una fecha y un número aproximado? Le envío la propuesta con el total en soles.' },
+    { id: 'grupos_t1_correo', segmento: 'grupos', toque: 1, ola: 0, canal: 'correo', masivo: false, nombre: 'Grupos · toque 1 (correo)',
+      asunto: 'Experiencia privada en The Pisco Room para {empresa}',
+      texto: 'Estimado/a {nombre}:\n\nEn The Pisco Room, la sala de Viñas de Oro en el Hotel Westin Lima, recibimos grupos de {personas} personas con una experiencia privada de pisco y coctelería, salón del hotel incluido. La propuesta se cotiza por persona y por paquete, con fecha y hora cerradas.\n\nSi me indica la fecha tentativa, el número de personas y la ocasión, le envío la cotización con el total en soles y el link de pago.\n\nSaludos cordiales,\n{firma}' },
+    { id: 'grupos_t2', segmento: 'grupos', toque: 2, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Grupos · toque 2 (+3 días)',
+      texto: '{nombre}, retomo la propuesta para su grupo. Tengo fechas disponibles en las próximas semanas; si me confirma personas y fecha tentativa, le envío la cotización cerrada hoy. Las fechas de diciembre se reservan con anticipación.' },
+    { id: 'grupos_t3', segmento: 'grupos', toque: 3, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Grupos · toque 3 (+7 días, último)',
+      texto: '{nombre}, cierro el tema por ahora. Si su equipo decide celebrar en la sala, me escribe con la fecha y el número de personas y lo armamos. Gracias por su tiempo.' },
+
+    // Piloto Chiclayo y Santa Cruz (tú)
+    { id: 'piloto_candidato_t1', segmento: 'piloto', toque: 1, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Piloto · candidato a embajador · toque 1',
+      texto: 'Hola {nombre}, ¿cómo estás? Te escribo de Viñas de Oro. Estamos llevando el pisco premium a {ciudad} con una red de embajadores: personas con buena red que recomiendan y ganan 10 % por cada venta con su código (15 % desde S/ 1,500 al mes), con kit de arranque y piezas con su nombre. Pensé en ti. ¿Conversamos 10 minutos esta semana?' },
+    { id: 'piloto_cliente_t1', segmento: 'piloto', toque: 1, ola: 0, canal: 'whatsapp', masivo: true, nombre: 'Piloto · cliente de embajador · toque 1',
+      texto: 'Hola {nombre}, te escribe Joaquín de Viñas de Oro. Ya tenemos entrega de pisco premium en {ciudad}: Silver 700 ml a S/ {precio_silver} (S/ 99.90 en supermercado), Gold a S/ {precio_gold} y Blue a S/ {precio_blue}. Pedidos con el código {codigo}, pago con link seguro y entrega confirmada. ¿Te armo un pedido para {ocasion}?' },
+    { id: 'piloto_t2', segmento: 'piloto', toque: 2, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Piloto · toque 2 (+2 días)',
+      texto: '{nombre}, te escribo de nuevo por si quedó pendiente. El último despacho a {ciudad} antes de fin de año tiene fecha, así que si quieres separar botellas te paso el total y el link de pago hoy. Código {codigo}.' },
+    { id: 'piloto_t3', segmento: 'piloto', toque: 3, ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Piloto · toque 3 (+5 días, último)',
+      texto: '{nombre}, último mensaje por ahora. Cuando quieras pedir, me escribes con el código {codigo} y lo coordino. Gracias.' },
+
+    // Fidelizar y referidos (todos los segmentos)
+    { id: 'postventa', segmento: '*', toque: 'post', ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Post-venta (al tercer día de la entrega)',
+      texto: '{nombre}, gracias por su compra. ¿Cómo le fue con {producto}? Si nos comparte una foto con su botella o en la sala, la publicamos con su permiso. Le dejo su código de referido {codigo}: cada amigo que compre con él le gana una Mini Gold 50 ml.' },
+    { id: 'confirmacion_pago', segmento: '*', toque: 'cierre', ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Confirmación de pago y entrega',
+      texto: '{nombre}, pago recibido, muchas gracias. Su pedido de {producto} queda programado para {ocasion}. Le aviso por aquí cuando esté en camino. Cualquier cambio, me escribe.' },
+    { id: 'propuesta', segmento: '*', toque: 'propuesta', ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Propuesta con total y link de pago',
+      texto: '{nombre}, le resumo la propuesta para {ocasion}: {producto}. Total: S/ {total}. Puede pagar con este link seguro: {link}. En cuanto llegue el pago le confirmo la fecha de entrega.' },
+    { id: 'recordatorio_cotizacion', segmento: '*', toque: 'recordatorio', ola: 0, canal: 'whatsapp', masivo: false, nombre: 'Recordatorio de cotización (3 horas después)',
+      texto: '{nombre}, le dejo el link de pago a la mano por si decide cerrar hoy: {link}. Total S/ {total}. Si prefiere otra opción, me dice y la ajusto.' }
+  ];
+
+  /* ---------- Datos de prueba (borrables con un botón; marcados prueba:true) ---------- */
+  var DATOS_PRUEBA = {
+    contactos: [
+      { id: 'c_prueba_01', prueba: true, nombre: 'María Fernanda Rojas', telefono: '+51 987 654 321', correo: 'mf.rojas@ejemplo.pe', empresa: '', cargo: '', ciudad: 'Lima', segmento: 'recontacto', subsegmento: 'G2 Alta', origen: 'WhatsApp Business', perfil: 'A', consentimiento: true, ultimoContacto: '2026-09-28', proximoToque: '2026-10-07', etapa: 'atraer', estado: 'activo', toques: 0, notas: 'Preguntó por la sala para un cumpleaños en octubre.', referidoPor: '', codigoReferido: 'MFR-07', ocasion: 'cumpleaños', personas: 2 },
+      { id: 'c_prueba_02', prueba: true, nombre: 'Luis Alberto Paredes', telefono: '+51 998 111 222', correo: '', empresa: '', cargo: '', ciudad: 'Lima', segmento: 'boca', subsegmento: 'Red personal', origen: 'Agenda personal', perfil: 'A', consentimiento: true, ultimoContacto: '', proximoToque: '2026-10-07', etapa: 'atraer', estado: 'activo', toques: 0, notas: 'Amigo de la universidad. Le gusta el Blue.', referidoPor: '', codigoReferido: 'LAP-11', ocasion: 'regalo', personas: 1 },
+      { id: 'c_prueba_03', prueba: true, nombre: 'Carla Huamán', telefono: '+51 955 333 444', correo: 'chuaman@rimac.ejemplo', empresa: 'Rímac', cargo: 'Analista', ciudad: 'Lima', segmento: 'breca', subsegmento: 'Rímac', origen: 'Base Breca', perfil: 'B', consentimiento: false, ultimoContacto: '', proximoToque: '2026-10-07', etapa: 'atraer', estado: 'activo', toques: 0, notas: '', referidoPor: '', codigoReferido: '', ocasion: 'regalo de fin de año', personas: 1 },
+      { id: 'c_prueba_04', prueba: true, nombre: 'Jorge Salinas', telefono: '+51 944 555 666', correo: 'jsalinas@bcp.ejemplo', empresa: 'BCP', cargo: 'Jefe de Bienestar', ciudad: 'Lima', segmento: 'corporativo', subsegmento: 'BCP', origen: 'LinkedIn', perfil: 'A', consentimiento: false, ultimoContacto: '2026-10-05', proximoToque: '2026-10-08', etapa: 'iniciar', estado: 'activo', toques: 1, notas: 'Correo enviado el 05/10 con propuesta de regalos.', referidoPor: '', codigoReferido: '', ocasion: 'regalos a clientes', personas: 40 },
+      { id: 'c_prueba_05', prueba: true, nombre: 'Patricia Vega', telefono: '+51 933 777 888', correo: 'pvega@estudiovega.ejemplo', empresa: 'Estudio Vega Abogados', cargo: 'Socia', ciudad: 'Lima', segmento: 'pyme', subsegmento: 'Estudio', origen: 'Referido', perfil: 'A', consentimiento: false, ultimoContacto: '2026-10-02', proximoToque: '2026-10-05', etapa: 'calificar', estado: 'activo', toques: 1, notas: 'Quiere regalar a 8 clientes. Pidió precios con grabado.', referidoPor: 'Luis Alberto Paredes', codigoReferido: '', ocasion: 'regalo a clientes', personas: 8 },
+      { id: 'c_prueba_06', prueba: true, nombre: 'Renzo Castillo', telefono: '+51 922 999 000', correo: 'rcastillo@ancona.ejemplo', empresa: 'Ancona', cargo: 'Productor de eventos', ciudad: 'Lima', segmento: 'grupos', subsegmento: 'Ancona', origen: 'Alianza', perfil: 'A', consentimiento: true, ultimoContacto: '2026-10-06', proximoToque: '2026-10-09', etapa: 'proponer', estado: 'activo', toques: 2, notas: 'Evento Lenovo del 12/11, 30 personas. Cotización enviada.', referidoPor: '', codigoReferido: '', ocasion: 'evento corporativo', personas: 30 },
+      { id: 'c_prueba_07', prueba: true, nombre: 'Ana Lucía Torres', telefono: '+51 911 222 333', correo: '', empresa: '', cargo: 'Bartender', ciudad: 'Chiclayo', segmento: 'piloto', subsegmento: 'Embajador', origen: 'Candidato', perfil: 'B', consentimiento: true, ultimoContacto: '2026-10-06', proximoToque: '2026-10-12', etapa: 'cerrar', estado: 'activo', toques: 1, notas: 'Acepta ser embajadora. Kit el 12/10.', referidoPor: '', codigoReferido: 'CIX-ANA', ocasion: '', personas: 0 },
+      { id: 'c_prueba_08', prueba: true, nombre: 'Diego Mendoza', telefono: '+51 900 444 555', correo: 'dmendoza@ejemplo.pe', empresa: '', cargo: '', ciudad: 'Lima', segmento: 'recontacto', subsegmento: 'Ya vivió la experiencia', origen: 'WhatsApp Business', perfil: 'A', consentimiento: true, ultimoContacto: '2026-09-20', proximoToque: '2026-09-25', etapa: 'fidelizar', estado: 'activo', toques: 3, notas: 'Compró 2 Blue en setiembre. Pedir foto y referido.', referidoPor: '', codigoReferido: 'DM-20', ocasion: '', personas: 0 }
+    ],
+    interacciones: [
+      { id: 'i_prueba_01', prueba: true, contactoId: 'c_prueba_04', fecha: '2026-10-05T10:15:00', canal: 'correo', toque: 1, ola: 1, plantillaId: 'corporativo_t1_correo', mensaje: 'Propuesta de regalos de fin de año con nombre', respuesta: '', resultado: 'enviado', codigoOrigen: 'CORP-BCP' },
+      { id: 'i_prueba_02', prueba: true, contactoId: 'c_prueba_05', fecha: '2026-10-02T16:40:00', canal: 'whatsapp', toque: 1, ola: 1, plantillaId: 'pyme_t1', mensaje: 'Regalos con nombre para 8 clientes', respuesta: 'Me interesa, ¿cuánto sale con grabado?', resultado: 'respondio', codigoOrigen: 'REF-LAP' },
+      { id: 'i_prueba_03', prueba: true, contactoId: 'c_prueba_06', fecha: '2026-10-06T11:00:00', canal: 'whatsapp', toque: 2, ola: 1, plantillaId: 'grupos_t2', mensaje: 'Cotización Signature 30 personas', respuesta: 'La reviso con el cliente', resultado: 'respondio', codigoOrigen: 'ANCONA' }
+    ],
+    ventas: [
+      { id: 'v_prueba_01', prueba: true, contactoId: 'c_prueba_08', fecha: '2026-09-23', linea: 'botellas', items: [{ productoId: 'blue710', nombre: 'Blue 710 ml', cantidad: 2, precio: 399.90, total: 799.80 }], botellas: 2, personas: 0, total: 799.80, gancho: '', codigoOrigen: 'RECONTACTO-G2', estado: 'entregado', fechaCierre: '2026-09-23', motivoPerdida: '', segmento: 'recontacto', derivarB2B: false, embajadorId: '', notas: 'Recojo en el Westin.' },
+      { id: 'v_prueba_02', prueba: true, contactoId: 'c_prueba_06', fecha: '2026-10-06', linea: 'experiencia', items: [{ productoId: 'signature', nombre: 'Paquete Signature · 30 personas', cantidad: 1, precio: 12990, total: 12990 }], botellas: 0, personas: 30, total: 12990, gancho: '', codigoOrigen: 'ANCONA', estado: 'cotizado', fechaCierre: '', motivoPerdida: '', segmento: 'grupos', derivarB2B: false, embajadorId: '', notas: 'Evento Lenovo 12/11. Paquete por confirmar.' },
+      { id: 'v_prueba_03', prueba: true, contactoId: 'c_prueba_01', fecha: '2026-10-06', linea: 'experiencia', items: [{ productoId: 'arte_pisco', nombre: 'El Arte del Pisco', cantidad: 2, precio: 290, total: 580 }], botellas: 0, personas: 2, total: 580, gancho: 'ola1_sala', codigoOrigen: 'RECONTACTO-G2', estado: 'link_enviado', fechaCierre: '', motivoPerdida: '', segmento: 'recontacto', derivarB2B: false, embajadorId: '', notas: 'Cumpleaños, sábado 17/10 4 p. m.' }
+    ],
+    embajadores: [
+      { id: 'e_prueba_01', prueba: true, nombre: 'Ana Lucía Torres', ciudad: 'Chiclayo', codigo: 'CIX-ANA', telefono: '+51 911 222 333', contactoId: 'c_prueba_07', estado: 'activo', desde: '2026-10-12', pagos: [] },
+      { id: 'e_prueba_02', prueba: true, nombre: 'Hotel Santa Cruz (recepción)', ciudad: 'Santa Cruz', codigo: 'SCZ-HOTEL', telefono: '', contactoId: '', estado: 'candidato', desde: '', pagos: [] }
+    ],
+    cuentas: [
+      { id: 'k_prueba_01', prueba: true, empresa: 'Ancona · evento Lenovo', segmento: 'grupos', contactos: ['c_prueba_06'], paquete: 'signature', personas: 30, fechaEvento: '2026-11-12', monto: 12990, estado: 'cotizacion', notas: 'Salón del Westin. Confirmar paquete y fecha de pago.', proximoPaso: 'Llamar a Renzo', fechaProximoPaso: '2026-10-09' },
+      { id: 'k_prueba_02', prueba: true, empresa: 'BCP · regalos de fin de año', segmento: 'corporativo', contactos: ['c_prueba_04'], paquete: '', personas: 40, fechaEvento: '', monto: 3596, estado: 'contactado', notas: '40 Gold grabados a S/ 89.90.', proximoPaso: 'Seguimiento por WhatsApp', fechaProximoPaso: '2026-10-08' }
+    ]
+  };
+
+  return {
+    EMPRESA: EMPRESA, SEGMENTOS: SEGMENTOS, ETAPAS: ETAPAS, ESTADOS_CONTACTO: ESTADOS_CONTACTO, CADENCIAS: CADENCIAS, REGLAS: REGLAS,
+    LEYENDAS: LEYENDAS, PRODUCTOS: PRODUCTOS, PACKS: PACKS, EXPERIENCIAS: EXPERIENCIAS, PAQUETES_GRUPO: PAQUETES_GRUPO,
+    OLAS: OLAS, GANCHOS: GANCHOS, METAS: METAS, TASAS_PLAN: TASAS_PLAN, CORTES: CORTES, FECHAS_CLAVE: FECHAS_CLAVE,
+    SEMANAS: SEMANAS, VOLUMEN_OLA: VOLUMEN_OLA, PLANTILLAS: PLANTILLAS, DATOS_PRUEBA: DATOS_PRUEBA
+  };
+})();
+
+</script>
+<script>
+/* ============================================================================
+   crm-logica.js · Lógica del CRM B2C · Bodegas Viñas de Oro / The Pisco Room
+   Sin servidor, sin dependencias. Datos en localStorage (clave vdo-crm-v1).
+   ========================================================================== */
+(function () {
+  'use strict';
+  var D = window.VDO_DATOS;
+  var CLAVE = 'vdo-crm-v1';
+  var VERSION_ESQUEMA = 1;
+  var TABLAS = ['contactos', 'interacciones', 'ventas', 'embajadores', 'cuentas', 'calendario', 'plantillas'];
+
+  /* =========================== Utilidades =========================== */
+  function $(id) { return document.getElementById(id); }
+  function qs(sel, el) { return (el || document).querySelector(sel); }
+  function qsa(sel, el) { return Array.prototype.slice.call((el || document).querySelectorAll(sel)); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function attr(s) { return esc(s).replace(/\n/g, '&#10;'); }
+
+  function hoyISO() {
+    try { return new Intl.DateTimeFormat('en-CA', { timeZone: D.EMPRESA.zonaHoraria, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
+    catch (e) { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  }
+  function ahoraISO() {
+    try {
+      var p = new Intl.DateTimeFormat('en-CA', { timeZone: D.EMPRESA.zonaHoraria, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+      var m = {}; p.forEach(function (x) { m[x.type] = x.value; });
+      if (m.hour === '24') m.hour = '00';
+      return m.year + '-' + m.month + '-' + m.day + 'T' + m.hour + ':' + m.minute;
+    } catch (e) { return new Date().toISOString().slice(0, 16); }
+  }
+  function esISO(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')); }
+  function isoDe(txt) {
+    var s = String(txt || '').trim();
+    if (!s) return '';
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    var m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
+    if (m) { var a = m[3].length === 2 ? '20' + m[3] : m[3]; return a + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); }
+    return '';
+  }
+  function fechaCorta(iso) { if (!esISO(iso)) return iso || ''; return iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4); }
+  function fechaHora(isoDT) { if (!isoDT) return ''; return fechaCorta(isoDT.slice(0, 10)) + (isoDT.length > 10 ? ' ' + isoDT.slice(11, 16) : ''); }
+  var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  var MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+  function fechaLarga(iso) { if (!esISO(iso)) return ''; var d = new Date(iso + 'T12:00:00'); return DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear(); }
+  function diaSemana(iso) { return new Date(iso + 'T12:00:00').getDay(); }
+  function sumarDias(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+  function diasEntre(a, b) { if (!esISO(a) || !esISO(b)) return null; return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000); }
+  function mesDe(iso) { return esISO(iso) ? iso.slice(0, 7) : ''; }
+  function nombreMes(ym) { if (!ym) return ''; var m = parseInt(ym.slice(5, 7), 10); return MESES[m - 1] + ' ' + ym.slice(0, 4); }
+
+  function soles(n) {
+    n = Number(n) || 0; var neg = n < 0; n = Math.abs(n);
+    var partes = n.toFixed(2).split('.');
+    partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return (neg ? '-' : '') + 'S/ ' + partes[0] + '.' + partes[1];
+  }
+  function entero(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function pct(x, dec) { if (x == null || isNaN(x)) return '–'; return (x * 100).toFixed(dec == null ? 1 : dec).replace('.', ',') + ' %'; }
+  function numero(s) {
+    if (typeof s === 'number') return s;
+    var t = String(s || '').replace(/S\/\.?/i, '').replace(/\s/g, '');
+    if (!t) return 0;
+    if (t.indexOf(',') > -1 && t.indexOf('.') > -1) { t = t.lastIndexOf(',') > t.lastIndexOf('.') ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, ''); }
+    else if (t.indexOf(',') > -1) { t = /,\d{1,2}$/.test(t) ? t.replace(',', '.') : t.replace(/,/g, ''); }
+    var n = parseFloat(t); return isNaN(n) ? 0 : n;
+  }
+  function normTelefono(t) {
+    var s = String(t || '').trim(); if (!s) return '';
+    var d = s.replace(/\D/g, ''); if (!d) return '';
+    if (d.slice(0, 2) === '00') d = d.slice(2);
+    if (d[0] === '0' && (d.length === 9 || d.length === 10) && d.slice(0, 2) !== '05') d = d.slice(1); // prefijo troncal (01) 445 1234
+    if (d.length === 9 && d[0] === '9') return '+51' + d;
+    if (d.length === 11 && d.slice(0, 2) === '51') return '+' + d;
+    if (d.length === 12 && d.slice(0, 3) === '051') return '+' + d.slice(1);
+    if (d.length === 7) return '+511' + d;
+    if (d.length === 8 && d[0] === '1') return '+51' + d;
+    if (d.length >= 10) return '+' + d;
+    return '+51' + d;
+  }
+  function telefonoDigitos(t) { return normTelefono(t).replace(/\D/g, ''); }
+  function normCorreo(c) { return String(c || '').trim().toLowerCase(); }
+  function normTexto(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  function nuevoId(prefijo) { return prefijo + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function clonar(o) { return JSON.parse(JSON.stringify(o)); }
+  function primerNombre(n) { var p = String(n || '').trim().split(/\s+/); return p[0] || ''; }
+  function tituloCaso(s) { return String(s || '').toLowerCase().replace(/(^|\s|-)([a-záéíóúñ])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
+
+  /* =========================== Almacén =========================== */
+  var DB = {
+    datos: null,
+    _timer: null,
+    cargar: function () {
+      var raw = null;
+      try { raw = localStorage.getItem(CLAVE); } catch (e) { raw = null; }
+      if (raw) {
+        try { this.datos = JSON.parse(raw); } catch (e) { this.datos = null; }
+      }
+      if (!this.datos) { this.datos = DB.vacio(); this.datos.ui.primeraVez = true; }
+      this.migrar();
+      return this.datos;
+    },
+    vacio: function () {
+      var d = { version: VERSION_ESQUEMA, creado: ahoraISO(), actualizado: ahoraISO(), config: DB.configInicial(), ui: { pantalla: 'hoy', filtros: {} } };
+      TABLAS.forEach(function (t) { d[t] = []; });
+      d.plantillas = clonar(D.PLANTILLAS).map(function (p) { p.activa = true; return p; });
+      d.calendario = generarCalendario(d.config);
+      return d;
+    },
+    configInicial: function () {
+      return clonar({
+        empresa: D.EMPRESA, segmentos: D.SEGMENTOS, etapas: D.ETAPAS, cadencias: D.CADENCIAS, reglas: D.REGLAS, leyendas: D.LEYENDAS,
+        productos: D.PRODUCTOS, packs: D.PACKS, experiencias: D.EXPERIENCIAS, paquetesGrupo: D.PAQUETES_GRUPO, olas: D.OLAS, ganchos: D.GANCHOS,
+        metas: D.METAS, tasasPlan: D.TASAS_PLAN, cortes: D.CORTES, fechasClave: D.FECHAS_CLAVE, skuMaestro: []
+      });
+    },
+    migrar: function () {
+      var d = this.datos;
+      TABLAS.forEach(function (t) { if (!Array.isArray(d[t])) d[t] = []; });
+      if (!d.config) d.config = DB.configInicial();
+      var ci = DB.configInicial();
+      Object.keys(ci).forEach(function (k) { if (d.config[k] == null) d.config[k] = ci[k]; });
+      if (!d.ui) d.ui = { pantalla: 'hoy', filtros: {} };
+      if (!d.plantillas.length) d.plantillas = clonar(D.PLANTILLAS).map(function (p) { p.activa = true; return p; });
+      if (!d.calendario.length) d.calendario = generarCalendario(d.config);
+      d.version = VERSION_ESQUEMA;
+    },
+    guardar: function () {
+      this.datos.actualizado = ahoraISO();
+      try { localStorage.setItem(CLAVE, JSON.stringify(this.datos)); setEstado('Guardado ' + this.datos.actualizado.slice(11, 16)); return true; }
+      catch (e) { setEstado('No se pudo guardar: ' + (e && e.name === 'QuotaExceededError' ? 'sin espacio en el navegador' : e.message), true); return false; }
+    },
+    guardarPronto: function () { var self = this; clearTimeout(this._timer); setEstado('Guardando…'); this._timer = setTimeout(function () { self.guardar(); }, 250); },
+    tabla: function (n) { return this.datos[n]; },
+    buscar: function (n, id) { var t = this.datos[n]; for (var i = 0; i < t.length; i++) if (t[i].id === id) return t[i]; return null; },
+    upsert: function (n, obj) {
+      var t = this.datos[n]; var ahora = ahoraISO();
+      if (!obj.id) obj.id = nuevoId(n.slice(0, 1));
+      if (!obj.createdAt) obj.createdAt = ahora;
+      obj.updatedAt = ahora;
+      for (var i = 0; i < t.length; i++) if (t[i].id === obj.id) { t[i] = obj; this.guardarPronto(); return obj; }
+      t.push(obj); this.guardarPronto(); return obj;
+    },
+    eliminar: function (n, id) { this.datos[n] = this.datos[n].filter(function (x) { return x.id !== id; }); this.guardarPronto(); },
+    exportar: function () {
+      var d = this.datos; var salida = { formato: 'vdo-crm-respaldo', version: VERSION_ESQUEMA, generado: ahoraISO(), fuente: 'CRM B2C Viñas de Oro', tablas: {}, config: d.config, ui: d.ui };
+      TABLAS.forEach(function (t) { salida.tablas[t] = d[t]; });
+      return salida;
+    },
+    importar: function (json, modo) {
+      // modo: 'reemplazar' | 'fusionar'
+      if (!json || json.formato !== 'vdo-crm-respaldo' || !json.tablas) throw new Error('El archivo no es un respaldo de este CRM (falta formato vdo-crm-respaldo).');
+      var d = this.datos; var resumen = {};
+      if (modo === 'reemplazar') {
+        var nuevo = DB.vacio();
+        TABLAS.forEach(function (t) { nuevo[t] = Array.isArray(json.tablas[t]) ? json.tablas[t] : []; resumen[t] = nuevo[t].length; });
+        if (json.config) nuevo.config = json.config;
+        if (json.ui) nuevo.ui = json.ui;
+        this.datos = nuevo; this.migrar();
+      } else {
+        TABLAS.forEach(function (t) {
+          var entrantes = Array.isArray(json.tablas[t]) ? json.tablas[t] : [];
+          var r = { nuevos: 0, actualizados: 0 };
+          if (t === 'contactos') { var rc = fusionarContactos(entrantes, 'completar'); r.nuevos = rc.nuevos; r.actualizados = rc.actualizados + rc.duplicadosActualizados; }
+          else {
+            var idx = {}; d[t].forEach(function (x, i) { idx[x.id] = i; });
+            entrantes.forEach(function (x) { if (x.id != null && idx[x.id] != null) { d[t][idx[x.id]] = x; r.actualizados++; } else { d[t].push(x); r.nuevos++; } });
+          }
+          resumen[t] = r;
+        });
+        if (json.config) {
+          if (Array.isArray(json.config.skuMaestro) && json.config.skuMaestro.length) d.config.skuMaestro = json.config.skuMaestro;
+        }
+      }
+      this.guardar();
+      return resumen;
+    },
+    borrarPrueba: function () {
+      var d = this.datos; var n = 0;
+      TABLAS.forEach(function (t) { var antes = d[t].length; d[t] = d[t].filter(function (x) { return !x.prueba; }); n += antes - d[t].length; });
+      this.guardar(); return n;
+    },
+    cargarPrueba: function () {
+      var d = this.datos; var n = 0;
+      Object.keys(D.DATOS_PRUEBA).forEach(function (t) {
+        D.DATOS_PRUEBA[t].forEach(function (x) { if (!DB.buscar(t, x.id)) { var c = clonar(x); c.createdAt = ahoraISO(); c.updatedAt = c.createdAt; d[t].push(c); n++; } });
+      });
+      this.guardar(); return n;
+    },
+    restablecer: function () { this.datos = DB.vacio(); this.datos.ui.primeraVez = false; this.guardar(); }
+  };
+
+  /* =========================== Calendario =========================== */
+  function generarCalendario(config) {
+    var E = config.empresa.calendario, M = config.metas, olas = config.olas;
+    var dias = [];
+    var fecha = E.desde;
+    while (fecha <= E.hasta) {
+      var dow = diaSemana(fecha);
+      if (dow !== 0 && E.diasLibres.indexOf(fecha) < 0) dias.push({ fecha: fecha, dow: dow, mes: mesDe(fecha) });
+      fecha = sumarDias(fecha, 1);
+    }
+    // pesos por mes
+    var sumaPeso = {};
+    dias.forEach(function (d) { var p = M.pesoDia[d.dow]; sumaPeso[d.mes] = (sumaPeso[d.mes] || 0) + p; });
+    return dias.map(function (d, i) {
+      var peso = M.pesoDia[d.dow];
+      var ola = olaDe(d.fecha, olas);
+      var semana = D.SEMANAS.filter(function (s) { return d.fecha >= s.desde && d.fecha <= s.hasta; })[0];
+      var hitos = config.fechasClave.filter(function (f) { return f.fecha === d.fecha || (f.hasta && d.fecha >= f.fecha && d.fecha <= f.hasta && f.tipo !== 'periodo'); }).map(function (f) { return f.texto; });
+      config.cortes.forEach(function (c) { if (c.fecha === d.fecha && hitos.indexOf(c.nombre) < 0) hitos.push(c.nombre); });
+      var periodos = config.fechasClave.filter(function (f) { return f.hasta && f.tipo === 'periodo' && d.fecha >= f.fecha && d.fecha <= f.hasta; }).map(function (f) { return f.texto; });
+      var vol = D.VOLUMEN_OLA[ola] || D.VOLUMEN_OLA[1];
+      var factor = d.dow === 6 ? 0.5 : 1;
+      var cuotas = {};
+      Object.keys(vol).forEach(function (k) { var v = vol[k]; if (k === 'piloto' && d.fecha < '2026-10-12') v = 0; cuotas[k] = Math.round(v * factor); });
+      var metaMes = (M.proyeccion[d.mes] || 0) - ((M.ventaPrevia && M.ventaPrevia[d.mes]) || 0);
+      var cuotaMes = M.cuotaOficial[d.mes] || 0;
+      return {
+        id: d.fecha, fecha: d.fecha, dow: d.dow, ola: ola, foco: semana ? semana.foco : '', hito: hitos.join(' · '), periodo: periodos.join(' · '),
+        metaDia: Math.round(metaMes * peso / sumaPeso[d.mes]), cuotaDia: Math.round(cuotaMes * peso / sumaPeso[d.mes]),
+        cuotas: cuotas, estado: 'pendiente', notas: '', esCorte: config.cortes.some(function (c) { return c.fecha === d.fecha; })
+      };
+    });
+  }
+  function olaDe(fecha, olas) {
+    olas = olas || DB.datos.config.olas;
+    for (var i = 0; i < olas.length; i++) if (fecha >= olas[i].desde && fecha <= olas[i].hasta) return olas[i].n;
+    if (fecha < olas[0].desde) return 1;
+    return olas[olas.length - 1].n;
+  }
+  function diaCalendario(fecha) { return DB.buscar('calendario', fecha); }
+
+  /* =========================== Reglas de negocio =========================== */
+  function cfg() { return DB.datos.config; }
+  function segmentoDe(codigo) { return cfg().segmentos.filter(function (s) { return s.codigo === codigo; })[0] || null; }
+  function nombreSegmento(codigo) { var s = segmentoDe(codigo); return s ? s.nombre : (codigo || '—'); }
+  function nombreEtapa(codigo) { var e = cfg().etapas.filter(function (x) { return x.codigo === codigo; })[0]; return e ? e.nombre : (codigo || '—'); }
+  function cadenciaDe(contacto) { var s = segmentoDe(contacto.segmento); var c = cfg().cadencias; return c[(s && s.cadencia) || 'consumidor'] || c.consumidor; }
+  function tratoDe(contacto) { var s = segmentoDe(contacto.segmento); return (s && s.trato) || 'usted'; }
+  function proximoToqueTras(contacto, fechaEnvio, toqueEnviado) {
+    var cad = cadenciaDe(contacto);
+    if (toqueEnviado >= cfg().reglas.maxToques) return '';
+    var inicio = contacto.inicioConversacion || fechaEnvio;
+    var objetivo = sumarDias(inicio, cad[toqueEnviado]);
+    if (objetivo <= fechaEnvio) objetivo = sumarDias(fechaEnvio, cad[toqueEnviado] - cad[toqueEnviado - 1]);
+    return objetivo;
+  }
+  function puedeIniciarOla(contacto, hoy) {
+    var R = cfg().reglas; hoy = hoy || hoyISO();
+    if (contacto.estado === 'perdido') return { ok: false, motivo: 'Marcado como perdido' };
+    if (contacto.estado === 'b2b') return { ok: false, motivo: 'Derivado a B2B' };
+    if (contacto.ultimoContacto && diasEntre(contacto.ultimoContacto, hoy) < R.diasBloqueo) return { ok: false, motivo: 'Contactado hace menos de ' + R.diasBloqueo + ' días' };
+    if (contacto.ultimaOla && diasEntre(contacto.ultimaOla, hoy) < R.diasEntreOlas) return { ok: false, motivo: 'Ya recibió un mensaje de ola hace menos de 3 semanas' };
+    if (contacto.segmento === 'recontacto' && !contacto.consentimiento) return { ok: false, motivo: 'Sin consentimiento: no escribió primero' };
+    return { ok: true, motivo: '' };
+  }
+  function derivarB2B(venta) { var R = cfg().reglas; return (Number(venta.botellas) || 0) > R.umbralBotellasB2B || (Number(venta.total) || 0) > R.umbralSolesB2B; }
+  function ganchosDe(fecha) { fecha = fecha || hoyISO(); return cfg().ganchos.filter(function (g) { return fecha >= g.desde && fecha <= g.hasta; }); }
+  function ganchoTexto(fecha) {
+    var gs = ganchosDe(fecha); var activos = gs.filter(function (g) { return g.estado === 'activo'; });
+    if (activos.length) return activos.map(function (g) { return g.texto; }).join(' y ');
+    return '';
+  }
+  function precioDe(id, campo) { var p = cfg().productos.filter(function (x) { return x.id === id; })[0]; return p ? p[campo || 'b2c'] : null; }
+  function f2(n) { return (Number(n) || 0).toFixed(2); }
+
+  /* =========================== Mensajes =========================== */
+  function variablesDe(contacto, extra) {
+    var c = contacto || {}; var ciudad = c.ciudad || 'su ciudad';
+    var v = {
+      nombre: primerNombre(c.nombre) || 'Hola', nombre_completo: c.nombre || '', empresa: c.empresa || (c.subsegmento || 'su empresa'), ocasion: c.ocasion || 'esta temporada',
+      codigo: c.codigoReferido || c.codigoOrigen || 'VDO', ciudad: ciudad, personas: c.personas || 'su grupo', producto: '', total: '', link: '[LINK DE PAGO]',
+      gancho: ganchoTexto((extra && extra.fecha) || hoyISO()) || 'una selección de octubre con precio exclusivo',
+      precio_silver: f2(precioDe('silver700', 'b2c')), precio_gold: f2(precioDe('gold700', 'b2c')), precio_blue: f2(precioDe('blue710', 'b2c')),
+      precio_breca_silver: f2(precioDe('silver700', 'breca')), precio_breca_gold: f2(precioDe('gold700', 'breca')), precio_breca_blue: f2(precioDe('blue710', 'breca')),
+      total_10_gold: f2(10 * (precioDe('gold700', 'b2c') || 0)), firma: cfg().empresa.firma
+    };
+    if (extra) Object.keys(extra).forEach(function (k) { if (extra[k] != null && extra[k] !== '') v[k] = extra[k]; });
+    return v;
+  }
+  function rellenar(texto, vars) { return String(texto || '').replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null ? vars[k] : m; }); }
+  function conLeyendas(texto, plantilla) {
+    if (plantilla && plantilla.masivo && cfg().reglas.leyendasEnMasivos) return texto + '\n\n' + cfg().leyendas.join('. ') + '.';
+    return texto;
+  }
+  function armarMensaje(plantilla, contacto, extra) {
+    var vars = variablesDe(contacto, extra);
+    return { texto: conLeyendas(rellenar(plantilla.texto, vars), plantilla), asunto: rellenar(plantilla.asunto || '', vars) };
+  }
+  function urlWhatsApp(telefono, texto) { var d = telefonoDigitos(telefono); return 'https://wa.me/' + d + (texto ? '?text=' + encodeURIComponent(texto) : ''); }
+  function urlCorreo(correo, asunto, texto) { return 'mailto:' + encodeURIComponent(correo || '') + '?subject=' + encodeURIComponent(asunto || '') + '&body=' + encodeURIComponent(texto || ''); }
+  function copiar(texto) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(texto).then(function () { return true; }, function () { return copiarFallback(texto); });
+    return Promise.resolve(copiarFallback(texto));
+  }
+  function copiarFallback(texto) {
+    var ta = document.createElement('textarea'); ta.value = texto; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '-1000px';
+    document.body.appendChild(ta); ta.select(); var ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; } document.body.removeChild(ta); return ok;
+  }
+
+  /* =========================== CSV =========================== */
+  function detectarDelimitador(linea) {
+    var c = { ',': 0, ';': 0, '\t': 0, '|': 0 }; var enComillas = false;
+    for (var i = 0; i < linea.length; i++) { var ch = linea[i]; if (ch === '"') enComillas = !enComillas; else if (!enComillas && c[ch] != null) c[ch]++; }
+    var mejor = ','; Object.keys(c).forEach(function (k) { if (c[k] > c[mejor]) mejor = k; });
+    return mejor;
+  }
+  function parseCSV(texto, delim) {
+    texto = String(texto || '').replace(/^﻿/, '');
+    var primera = texto.split(/\r?\n/)[0] || '';
+    delim = delim || detectarDelimitador(primera);
+    var filas = [], fila = [], campo = '', enComillas = false;
+    for (var i = 0; i < texto.length; i++) {
+      var ch = texto[i], sig = texto[i + 1];
+      if (enComillas) {
+        if (ch === '"' && sig === '"') { campo += '"'; i++; }
+        else if (ch === '"') enComillas = false;
+        else campo += ch;
+      } else {
+        if (ch === '"') enComillas = true;
+        else if (ch === delim) { fila.push(campo); campo = ''; }
+        else if (ch === '\n' || ch === '\r') { if (ch === '\r' && sig === '\n') i++; fila.push(campo); filas.push(fila); fila = []; campo = ''; }
+        else campo += ch;
+      }
+    }
+    if (campo !== '' || fila.length) { fila.push(campo); filas.push(fila); }
+    filas = filas.filter(function (f) { return f.some(function (x) { return String(x).trim() !== ''; }); });
+    if (!filas.length) return { cabeceras: [], filas: [], delim: delim };
+    var cab = filas[0].map(function (h) { return String(h).trim(); });
+    return { cabeceras: cab, filas: filas.slice(1), delim: delim };
+  }
+  var CAMPOS_IMPORT = [
+    { campo: 'nombre', etiqueta: 'Nombre', pistas: ['nombre completo', 'nombre', 'name', 'first name', 'nombres', 'contacto', 'cliente', 'display name', 'given name'] },
+    { campo: 'apellido', etiqueta: 'Apellido (se une al nombre)', pistas: ['apellidos', 'apellido', 'last name', 'family name', 'surname'] },
+    { campo: 'telefono', etiqueta: 'Teléfono / WhatsApp', pistas: ['phone 1 - value', 'teléfono', 'telefono', 'celular', 'móvil', 'movil', 'whatsapp', 'phone', 'mobile', 'número', 'numero', 'tel'] },
+    { campo: 'telefono2', etiqueta: 'Teléfono 2', pistas: ['phone 2 - value', 'teléfono 2', 'telefono 2', 'celular 2', 'otro teléfono'] },
+    { campo: 'correo', etiqueta: 'Correo', pistas: ['e-mail 1 - value', 'correo', 'email', 'e-mail', 'mail', 'correo electrónico'] },
+    { campo: 'empresa', etiqueta: 'Empresa', pistas: ['organization 1 - name', 'organization name', 'empresa', 'compañía', 'compania', 'company', 'organización', 'organizacion'] },
+    { campo: 'cargo', etiqueta: 'Cargo', pistas: ['organization 1 - title', 'organization title', 'cargo', 'puesto', 'title', 'job title', 'posición'] },
+    { campo: 'ciudad', etiqueta: 'Ciudad', pistas: ['ciudad', 'city', 'distrito', 'address 1 - city', 'sede', 'ubicación'] },
+    { campo: 'segmento', etiqueta: 'Segmento (código o nombre)', pistas: ['segmento', 'segment'] },
+    { campo: 'subsegmento', etiqueta: 'Subsegmento', pistas: ['subsegmento', 'área', 'area', 'grupo'] },
+    { campo: 'perfil', etiqueta: 'Perfil (A/B)', pistas: ['perfil', 'nse', 'nivel'] },
+    { campo: 'ocasion', etiqueta: 'Ocasión', pistas: ['ocasión', 'ocasion', 'motivo', 'interés', 'interes'] },
+    { campo: 'notas', etiqueta: 'Notas', pistas: ['notas', 'notes', 'observaciones', 'comentarios', 'historial'] },
+    { campo: 'referidoPor', etiqueta: 'Referido por', pistas: ['referido por', 'referido', 'referred by'] },
+    { campo: 'ultimoContacto', etiqueta: 'Último contacto (fecha)', pistas: ['último contacto', 'ultimo contacto', 'last contact', 'fecha último'] }
+  ];
+  function adivinarMapeo(cabeceras) {
+    var mapeo = {}; var usadas = {};
+    var normCab = cabeceras.map(normTexto);
+    // Primera pasada: coincidencia exacta de cabecera (cubre Google Contacts y agendas en español)
+    CAMPOS_IMPORT.forEach(function (c) {
+      for (var p = 0; p < c.pistas.length; p++) {
+        var pista = normTexto(c.pistas[p]);
+        for (var i = 0; i < normCab.length; i++) { if (!usadas[i] && normCab[i] === pista) { mapeo[c.campo] = i; usadas[i] = true; return; } }
+      }
+    });
+    // Segunda pasada: la cabecera empieza por la pista (por ejemplo "Teléfono móvil")
+    CAMPOS_IMPORT.forEach(function (c) {
+      if (mapeo[c.campo] != null) return;
+      for (var p = 0; p < c.pistas.length; p++) {
+        var pista = normTexto(c.pistas[p]); if (pista.length < 4) continue;
+        for (var i = 0; i < normCab.length; i++) { if (!usadas[i] && normCab[i].indexOf(pista) === 0 && !/^(phonetic|name prefix|name suffix|file as)/.test(normCab[i])) { mapeo[c.campo] = i; usadas[i] = true; return; } }
+      }
+    });
+    return mapeo;
+  }
+  function segmentoDesdeTexto(txt) {
+    var t = normTexto(txt); if (!t) return '';
+    var segs = cfg().segmentos;
+    for (var i = 0; i < segs.length; i++) { if (t === segs[i].codigo || normTexto(segs[i].nombre).indexOf(t) === 0 || t.indexOf(segs[i].codigo) === 0) return segs[i].codigo; }
+    if (/breca/.test(t)) return 'breca'; if (/corp/.test(t)) return 'corporativo'; if (/pyme|empresa/.test(t)) return 'pyme'; if (/grupo|evento|alianza/.test(t)) return 'grupos';
+    if (/recontacto|whatsapp|wa/.test(t)) return 'recontacto'; if (/boca|red|personal|amigo/.test(t)) return 'boca'; if (/piloto|chiclayo|santa cruz|embajador/.test(t)) return 'piloto';
+    return '';
+  }
+  function filasAContactos(parsed, mapeo, defectos) {
+    var cab = parsed.cabeceras;
+    return parsed.filas.map(function (f, n) {
+      function v(campo) { var i = mapeo[campo]; return (i == null || i === '' || i < 0) ? '' : String(f[i] == null ? '' : f[i]).trim(); }
+      var nombre = v('nombre'); var ap = v('apellido'); if (ap) nombre = (nombre + ' ' + ap).trim();
+      var tel = v('telefono') || v('telefono2');
+      var c = {
+        nombre: nombre, telefono: tel ? normTelefono(tel) : '', telefono2: v('telefono2') && v('telefono') ? normTelefono(v('telefono2')) : '', correo: normCorreo(v('correo')),
+        empresa: v('empresa'), cargo: v('cargo'), ciudad: v('ciudad') || defectos.ciudad || '', segmento: segmentoDesdeTexto(v('segmento')) || defectos.segmento,
+        subsegmento: v('subsegmento') || defectos.subsegmento || '', origen: defectos.origen, perfil: (v('perfil').toUpperCase().charAt(0) === 'A' || v('perfil').toUpperCase().charAt(0) === 'B') ? v('perfil').toUpperCase().charAt(0) : (defectos.perfil || ''),
+        consentimiento: !!defectos.consentimiento, ocasion: v('ocasion'), notas: v('notas'), referidoPor: v('referidoPor'), ultimoContacto: isoDe(v('ultimoContacto')),
+        proximoToque: defectos.proximoToque || '', etapa: 'atraer', estado: 'activo', toques: 0, codigoReferido: '', personas: '', fila: n + 2
+      };
+      if (!c.nombre && c.telefono) c.nombre = c.telefono;
+      return c;
+    });
+  }
+  function indiceContactos() {
+    var porTel = {}, porCorreo = {};
+    DB.tabla('contactos').forEach(function (c) {
+      var t = telefonoDigitos(c.telefono); if (t) porTel[t] = c;
+      var t2 = telefonoDigitos(c.telefono2); if (t2) porTel[t2] = c;
+      var e = normCorreo(c.correo); if (e) porCorreo[e] = c;
+    });
+    return { porTel: porTel, porCorreo: porCorreo };
+  }
+  function fusionarContactos(entrantes, politica) {
+    // politica: 'completar' (rellena vacíos del existente) | 'sobrescribir' | 'omitir'
+    var idx = indiceContactos(); var r = { nuevos: 0, duplicadosActualizados: 0, omitidos: 0, sinDato: 0, actualizados: 0, detalle: [] };
+    var ahora = ahoraISO();
+    entrantes.forEach(function (c) {
+      var t = telefonoDigitos(c.telefono), e = normCorreo(c.correo);
+      var existente = (t && idx.porTel[t]) || (e && idx.porCorreo[e]) || (c.id && DB.buscar('contactos', c.id)) || null;
+      if (!t && !e) r.sinDato++;
+      if (existente) {
+        if (politica === 'omitir') { r.omitidos++; r.detalle.push({ tipo: 'omitido', nombre: c.nombre, con: existente.nombre }); return; }
+        Object.keys(c).forEach(function (k) {
+          if (k === 'id' || k === 'fila' || k === 'createdAt') return;
+          var vacio = existente[k] == null || existente[k] === '' || existente[k] === 0 || existente[k] === false;
+          if (politica === 'sobrescribir' ? (c[k] !== '' && c[k] != null) : (vacio && c[k] !== '' && c[k] != null)) existente[k] = c[k];
+        });
+        if (c.notas && existente.notas && existente.notas.indexOf(c.notas) < 0 && politica === 'completar') existente.notas = existente.notas + '\n' + c.notas;
+        existente.updatedAt = ahora; r.duplicadosActualizados++; r.detalle.push({ tipo: 'duplicado', nombre: c.nombre, con: existente.nombre });
+      } else {
+        var nuevo = clonar(c); delete nuevo.fila; if (!nuevo.id) nuevo.id = nuevoId('c'); nuevo.createdAt = nuevo.createdAt || ahora; nuevo.updatedAt = ahora;
+        if (!nuevo.telefono) nuevo.telefono = ''; if (!nuevo.correo) nuevo.correo = '';
+        DB.tabla('contactos').push(nuevo); r.nuevos++;
+        var tt = telefonoDigitos(nuevo.telefono); if (tt) idx.porTel[tt] = nuevo; var ee = normCorreo(nuevo.correo); if (ee) idx.porCorreo[ee] = nuevo;
+      }
+    });
+    DB.guardarPronto();
+    return r;
+  }
+  function aCSV(filas, columnas) {
+    function celda(v) { if (v == null) v = ''; if (typeof v === 'object') v = JSON.stringify(v); v = String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+    var lineas = [columnas.map(celda).join(',')];
+    filas.forEach(function (f) { lineas.push(columnas.map(function (c) { return celda(f[c]); }).join(',')); });
+    return '﻿' + lineas.join('\r\n');
+  }
+  function descargar(nombre, contenido, tipo) {
+    var blob = new Blob([contenido], { type: tipo || 'application/octet-stream' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  function columnasDe(tabla) {
+    var cols = {}; tabla.forEach(function (f) { Object.keys(f).forEach(function (k) { cols[k] = true; }); });
+    var pref = ['id', 'nombre', 'telefono', 'correo', 'empresa', 'cargo', 'ciudad', 'segmento', 'subsegmento', 'origen', 'perfil', 'consentimiento', 'ultimoContacto', 'proximoToque', 'etapa', 'estado', 'toques', 'notas', 'referidoPor', 'codigoReferido', 'fecha', 'total', 'linea'];
+    var out = pref.filter(function (k) { return cols[k]; }); Object.keys(cols).forEach(function (k) { if (out.indexOf(k) < 0) out.push(k); });
+    return out;
+  }
+
+  /* =========================== UI base =========================== */
+  function setEstado(txt, error) { var el = $('estadoGuardado'); if (!el) return; el.textContent = txt; el.classList.toggle('error', !!error); }
+  var toastTimer = null;
+  function toast(msg, tipo) { var t = $('toast'); t.textContent = msg; t.className = 'toast' + (tipo ? ' ' + tipo : ''); t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 3200); }
+  function abrirModal(html, opciones) {
+    var m = $('modal'); $('modalContenido').innerHTML = html; m.hidden = false; m.className = 'modal' + (opciones && opciones.ancho ? ' ' + opciones.ancho : ''); document.body.classList.add('con-modal');
+    var foco = qs('input,select,textarea,button', $('modalContenido')); if (foco && !(opciones && opciones.sinFoco)) setTimeout(function () { foco.focus(); }, 30);
+  }
+  function cerrarModal() { $('modal').hidden = true; $('modalContenido').innerHTML = ''; document.body.classList.remove('con-modal'); }
+  function confirmar(texto, onOk, textoBoton) {
+    abrirModal('<h3>Confirmar</h3><p>' + esc(texto) + '</p><div class="acciones"><button class="btn" data-accion="cancelar">Cancelar</button><button class="btn peligro" data-accion="ok">' + esc(textoBoton || 'Sí, continuar') + '</button></div>');
+    qs('[data-accion="ok"]', $('modalContenido')).onclick = function () { cerrarModal(); onOk(); };
+    qs('[data-accion="cancelar"]', $('modalContenido')).onclick = cerrarModal;
+  }
+  function opciones(lista, valor, vacio) {
+    var h = vacio != null ? '<option value="">' + esc(vacio) + '</option>' : '';
+    lista.forEach(function (o) { var v = typeof o === 'string' ? o : o.valor, t = typeof o === 'string' ? o : o.texto; h += '<option value="' + attr(v) + '"' + (String(v) === String(valor == null ? '' : valor) ? ' selected' : '') + '>' + esc(t) + '</option>'; });
+    return h;
+  }
+  function opcionesSegmentos(valor, vacio) { return opciones(cfg().segmentos.map(function (s) { return { valor: s.codigo, texto: s.num + ' · ' + s.nombre }; }), valor, vacio); }
+  function opcionesEtapas(valor, vacio) { return opciones(cfg().etapas.map(function (e) { return { valor: e.codigo, texto: e.nombre }; }), valor, vacio); }
+  function campo(etiqueta, inputHtml, ayuda) { return '<label class="campo"><span>' + esc(etiqueta) + '</span>' + inputHtml + (ayuda ? '<small>' + esc(ayuda) + '</small>' : '') + '</label>'; }
+  function inp(nombre, valor, extra) { return '<input name="' + attr(nombre) + '" value="' + attr(valor == null ? '' : valor) + '" ' + (extra || '') + '>'; }
+  function leerForm(form) { var o = {}; qsa('[name]', form).forEach(function (el) { if (el.type === 'checkbox') o[el.name] = el.checked; else o[el.name] = el.value; }); return o; }
+
+  /* =========================== Navegación =========================== */
+  var PANTALLAS = {
+    hoy: { titulo: 'Hoy', render: renderHoy },
+    calendario: { titulo: 'Calendario', render: renderCalendario },
+    contactos: { titulo: 'Contactos', render: renderContactos },
+    pipeline: { titulo: 'Pipeline', render: renderPipeline },
+    ventas: { titulo: 'Ventas', render: renderVentas },
+    metricas: { titulo: 'Métricas', render: renderMetricas },
+    plantillas: { titulo: 'Plantillas', render: renderPlantillas },
+    reporte: { titulo: 'Reporte', render: renderReporte },
+    ajustes: { titulo: 'Ajustes', render: renderAjustes }
+  };
+  function navegar(nombre, sub) {
+    if (!PANTALLAS[nombre]) nombre = 'hoy';
+    DB.datos.ui.pantalla = nombre; if (sub) DB.datos.ui.sub = sub; DB.guardarPronto();
+    qsa('.pantalla').forEach(function (s) { s.hidden = s.id !== 'p-' + nombre; });
+    qsa('[data-pantalla]').forEach(function (b) { b.classList.toggle('activa', b.getAttribute('data-pantalla') === nombre); });
+    PANTALLAS[nombre].render();
+    window.scrollTo(0, 0);
+  }
+  function refrescar() { var p = DB.datos.ui.pantalla || 'hoy'; if (PANTALLAS[p]) PANTALLAS[p].render(); }
+
+  /* =========================== HOY (base; se completa en la parte 2) =========================== */
+  function renderHoy() {
+    var hoy = hoyISO(); var dia = diaCalendario(hoy); var cont = DB.tabla('contactos');
+    var vencidos = cont.filter(function (c) { return c.estado === 'activo' && c.proximoToque && c.proximoToque < hoy; }).length;
+    var paraHoy = cont.filter(function (c) { return c.estado === 'activo' && c.proximoToque === hoy; }).length;
+    var ventasHoy = DB.tabla('ventas').filter(function (v) { return (v.fechaCierre || v.fecha) === hoy && ['pagado', 'entregado'].indexOf(v.estado) >= 0 && !v.derivarB2B; });
+    var totalHoy = ventasHoy.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
+    var html = '<div class="cabecera-pantalla"><h2>Hoy</h2><p class="sub">' + esc(fechaLarga(hoy)) + ' · hora de Lima</p></div>';
+    if (dia) {
+      html += '<div class="tarjeta oro"><div class="fila-sup"><span class="etiqueta">Ola ' + dia.ola + '</span>' + (dia.esCorte ? '<span class="pill alerta">Corte de control</span>' : '') + '</div>' +
+        '<h3>Foco del día</h3><p>' + esc(dia.foco || '—') + '</p>' + (dia.hito ? '<p><b>Hito:</b> ' + esc(dia.hito) + '</p>' : '') + (dia.periodo ? '<p class="texto2">' + esc(dia.periodo) + '</p>' : '') +
+        '<div class="kpis"><div class="kpi"><span class="lab">Meta del día (proyección)</span><span class="val">' + soles(dia.metaDia) + '</span></div><div class="kpi"><span class="lab">Cuota oficial del día</span><span class="val">' + soles(dia.cuotaDia) + '</span></div><div class="kpi"><span class="lab">Venta de hoy</span><span class="val">' + soles(totalHoy) + '</span></div></div>' +
+        '<div class="cuotas">' + Object.keys(dia.cuotas).filter(function (k) { return dia.cuotas[k] > 0; }).map(function (k) { return '<span class="chip"><b>' + dia.cuotas[k] + '</b> ' + esc(nombreSegmento(k)) + '</span>'; }).join('') + '</div></div>';
+    } else {
+      html += '<div class="tarjeta"><p>Hoy no es un día de atención del calendario (domingo, 25/12 o fuera del 07/10 al 31/12).</p></div>';
+    }
+    html += '<div class="grid-2"><div class="tarjeta"><h3>Seguimientos</h3><div class="kpis"><div class="kpi"><span class="lab">Para hoy</span><span class="val">' + paraHoy + '</span></div><div class="kpi' + (vencidos ? ' mal' : '') + '"><span class="lab">Vencidos</span><span class="val">' + vencidos + '</span></div><div class="kpi"><span class="lab">Contactos</span><span class="val">' + entero(cont.length) + '</span></div></div>' +
+      '<p class="texto2">La cola del día con mensajes armados, botones de copiar y abrir WhatsApp, y el registro de enviado / respondió / compró llegan en la parte 2.</p><div class="acciones"><button class="btn" data-ir="contactos" data-filtro="vencidos">Ver vencidos</button><button class="btn" data-ir="ajustes">Importar contactos</button></div></div>' +
+      '<div class="tarjeta"><h3>Estado de la base</h3>' + resumenBase() + '</div></div>';
+    $('p-hoy').innerHTML = html;
+  }
+  function resumenBase() {
+    var d = DB.datos; var porSeg = {};
+    d.contactos.forEach(function (c) { porSeg[c.segmento] = (porSeg[c.segmento] || 0) + 1; });
+    var h = '<table class="tabla compacta"><tbody>';
+    cfg().segmentos.forEach(function (s) { h += '<tr><td>' + esc(s.num + ' · ' + s.nombre) + '</td><td class="num">' + entero(porSeg[s.codigo] || 0) + '</td></tr>'; });
+    h += '<tr><td>Sin segmento</td><td class="num">' + entero(porSeg[''] || porSeg['undefined'] || 0) + '</td></tr>';
+    h += '<tr class="total"><td>Total contactos</td><td class="num">' + entero(d.contactos.length) + '</td></tr>';
+    h += '<tr><td>Ventas registradas</td><td class="num">' + entero(d.ventas.length) + '</td></tr><tr><td>Cuentas / eventos</td><td class="num">' + entero(d.cuentas.length) + '</td></tr><tr><td>Embajadores</td><td class="num">' + entero(d.embajadores.length) + '</td></tr><tr><td>Plantillas</td><td class="num">' + entero(d.plantillas.length) + '</td></tr></tbody></table>';
+    return h;
+  }
+
+  /* =========================== Placeholders (partes siguientes) =========================== */
+  function placeholder(id, titulo, parte, detalle) { $(id).innerHTML = '<div class="cabecera-pantalla"><h2>' + esc(titulo) + '</h2></div><div class="tarjeta"><p><b>En construcción · parte ' + parte + '.</b> ' + esc(detalle) + '</p></div>'; }
+  function renderCalendario() {
+    var cal = DB.tabla('calendario'); var hoy = hoyISO();
+    var html = '<div class="cabecera-pantalla"><h2>Calendario</h2><p class="sub">Del 07/10 al 31/12 · lunes a sábado, sin el 25/12 · ' + cal.length + ' días de atención. Vista completa y edición en la parte 2.</p></div>';
+    html += '<div class="tarjeta"><div class="tabla-scroll"><table class="tabla"><thead><tr><th>Fecha</th><th>Ola</th><th>Foco</th><th>Hito</th><th class="num">Meta del día</th><th class="num">Cuota oficial</th><th>Estado</th></tr></thead><tbody>';
+    cal.slice(0, 400).forEach(function (d) {
+      html += '<tr' + (d.fecha === hoy ? ' class="hoy"' : '') + '><td data-label="Fecha">' + esc(fechaCorta(d.fecha)) + '<br><small>' + DIAS[d.dow] + '</small></td><td data-label="Ola">' + d.ola + '</td><td data-label="Foco" class="celda-larga">' + esc(d.foco) + '</td><td data-label="Hito">' + esc(d.hito || '') + '</td><td data-label="Meta" class="num">' + soles(d.metaDia) + '</td><td data-label="Cuota" class="num">' + soles(d.cuotaDia) + '</td><td data-label="Estado"><span class="pill">' + esc(d.estado) + '</span></td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+    $('p-calendario').innerHTML = html;
+  }
+  function renderPipeline() { placeholder('p-pipeline', 'Pipeline', 3, 'Tablero por etapa con filtro por segmento.'); }
+  function renderVentas() { placeholder('p-ventas', 'Ventas', 4, 'Registro de ventas, calculadora de grupos, avance contra cuota y proyección, mix 60/40 y embajadores.'); }
+  function renderMetricas() { placeholder('p-metricas', 'Métricas', 5, 'Tasas reales contra el plan, ticket, venta por código, ranking y alertas en los cortes.'); }
+  function renderPlantillas() {
+    var pl = DB.tabla('plantillas');
+    var html = '<div class="cabecera-pantalla"><h2>Plantillas</h2><p class="sub">' + pl.length + ' plantillas precargadas. La edición completa llega en la parte 5; aquí puedes ver el texto de cada una.</p></div><div class="tarjeta">';
+    pl.forEach(function (p) { html += '<details class="plantilla"><summary><b>' + esc(p.nombre) + '</b> <span class="texto3">· ' + esc(p.segmento === '*' ? 'todos' : nombreSegmento(p.segmento)) + ' · ' + esc(p.canal) + (p.masivo ? ' · lleva leyendas' : '') + '</span></summary>' + (p.asunto ? '<p><b>Asunto:</b> ' + esc(p.asunto) + '</p>' : '') + '<pre class="texto-plantilla">' + esc(p.texto) + '</pre></details>'; });
+    $('p-plantillas').innerHTML = html + '</div>';
+  }
+  function renderReporte() { placeholder('p-reporte', 'Reporte semanal', 5, 'Resumen para el comité de los viernes, copiable como texto y correo.'); }
+
+  /* =========================== CONTACTOS =========================== */
+  function filtrosContactos() { var f = DB.datos.ui.filtros.contactos; if (!f) { f = { texto: '', segmento: '', etapa: '', ciudad: '', perfil: '', toque: '', origen: '', estado: 'activo' }; DB.datos.ui.filtros.contactos = f; } return f; }
+  function contactosFiltrados() {
+    var f = filtrosContactos(); var hoy = hoyISO(); var t = normTexto(f.texto); var dig = f.texto.replace(/\D/g, '');
+    return DB.tabla('contactos').filter(function (c) {
+      if (f.estado && (c.estado || 'activo') !== f.estado) return false;
+      if (f.segmento && c.segmento !== f.segmento) return false;
+      if (f.etapa && c.etapa !== f.etapa) return false;
+      if (f.ciudad && normTexto(c.ciudad) !== normTexto(f.ciudad)) return false;
+      if (f.perfil && c.perfil !== f.perfil) return false;
+      if (f.origen && normTexto(c.origen) !== normTexto(f.origen)) return false;
+      if (f.toque === 'hoy' && c.proximoToque !== hoy) return false;
+      if (f.toque === 'vencidos' && !(c.proximoToque && c.proximoToque < hoy)) return false;
+      if (f.toque === 'semana' && !(c.proximoToque && c.proximoToque >= hoy && c.proximoToque <= sumarDias(hoy, 7))) return false;
+      if (f.toque === 'sin' && c.proximoToque) return false;
+      if (t) { var pajar = normTexto([c.nombre, c.empresa, c.correo, c.notas, c.subsegmento, c.cargo].join(' ')); if (pajar.indexOf(t) < 0 && !(dig.length >= 4 && telefonoDigitos(c.telefono).indexOf(dig) >= 0)) return false; }
+      return true;
+    }).sort(function (a, b) { var pa = a.proximoToque || '9999', pb = b.proximoToque || '9999'; return pa < pb ? -1 : pa > pb ? 1 : String(a.nombre).localeCompare(String(b.nombre)); });
+  }
+  function valoresUnicos(campo) { var m = {}; DB.tabla('contactos').forEach(function (c) { var v = String(c[campo] || '').trim(); if (v) m[v] = true; }); return Object.keys(m).sort(); }
+  function renderContactos() {
+    var f = filtrosContactos(); var lista = contactosFiltrados(); var hoy = hoyISO();
+    var html = '<div class="cabecera-pantalla"><h2>Contactos</h2><p class="sub">' + entero(lista.length) + ' de ' + entero(DB.tabla('contactos').length) + '</p><div class="acciones"><button class="btn primario" data-accion="nuevo-contacto">Nuevo contacto</button><button class="btn" data-ir="ajustes" data-sub="datos">Importar CSV</button><button class="btn" data-accion="exportar-contactos">Exportar CSV</button></div></div>';
+    html += '<div class="tarjeta filtros"><input type="search" name="texto" placeholder="Buscar nombre, empresa, teléfono, correo o nota" value="' + attr(f.texto) + '">' +
+      '<select name="segmento">' + opcionesSegmentos(f.segmento, 'Todos los segmentos') + '</select>' +
+      '<select name="etapa">' + opcionesEtapas(f.etapa, 'Todas las etapas') + '</select>' +
+      '<select name="ciudad">' + opciones(valoresUnicos('ciudad'), f.ciudad, 'Todas las ciudades') + '</select>' +
+      '<select name="perfil">' + opciones([{ valor: 'A', texto: 'Perfil A · alto poder adquisitivo' }, { valor: 'B', texto: 'Perfil B · pyme' }], f.perfil, 'Todos los perfiles') + '</select>' +
+      '<select name="toque">' + opciones([{ valor: 'hoy', texto: 'Toque hoy' }, { valor: 'vencidos', texto: 'Toques vencidos' }, { valor: 'semana', texto: 'Próximos 7 días' }, { valor: 'sin', texto: 'Sin próximo toque' }], f.toque, 'Próximo toque: todos') + '</select>' +
+      '<select name="origen">' + opciones(valoresUnicos('origen'), f.origen, 'Todos los orígenes') + '</select>' +
+      '<select name="estado">' + opciones([{ valor: 'activo', texto: 'Activos' }, { valor: 'dormido', texto: 'Dormidos' }, { valor: 'perdido', texto: 'Perdidos' }, { valor: 'b2b', texto: 'Derivados a B2B' }], f.estado, 'Todos los estados') + '</select>' +
+      '<button class="btn chico" data-accion="limpiar-filtros">Limpiar</button></div>';
+    html += '<div class="tarjeta sin-padding"><div class="tabla-scroll"><table class="tabla contactos"><thead><tr><th>Contacto</th><th>Segmento</th><th>Etapa</th><th>Próximo toque</th><th>Último contacto</th><th>Perfil</th><th>Ciudad</th><th></th></tr></thead><tbody>';
+    if (!lista.length) html += '<tr><td colspan="8" class="vacio">Sin contactos con estos filtros. Importa tu agenda desde Ajustes → Datos o crea uno nuevo.</td></tr>';
+    lista.slice(0, 500).forEach(function (c) {
+      var venc = c.proximoToque && c.proximoToque < hoy, esHoy = c.proximoToque === hoy;
+      html += '<tr data-id="' + attr(c.id) + '"><td data-label="Contacto"><b>' + esc(c.nombre || '(sin nombre)') + '</b>' + (c.prueba ? ' <span class="pill chica">prueba</span>' : '') + '<br><small>' + esc(c.telefono || '') + (c.correo ? ' · ' + esc(c.correo) : '') + (c.empresa ? ' · ' + esc(c.empresa) : '') + '</small></td>' +
+        '<td data-label="Segmento"><span class="chip seg-' + esc(c.segmento) + '">' + esc(nombreSegmento(c.segmento)) + '</span>' + (c.subsegmento ? '<br><small>' + esc(c.subsegmento) + '</small>' : '') + '</td>' +
+        '<td data-label="Etapa">' + esc(nombreEtapa(c.etapa)) + ((c.estado || 'activo') !== 'activo' ? '<br><small class="texto3">' + esc(c.estado) + '</small>' : '') + '</td>' +
+        '<td data-label="Próximo toque" class="' + (venc ? 'mal' : esHoy ? 'bien' : '') + '">' + esc(fechaCorta(c.proximoToque) || '—') + (c.toques ? '<br><small>toque ' + c.toques + ' de 3</small>' : '') + '</td>' +
+        '<td data-label="Último contacto">' + esc(fechaCorta(c.ultimoContacto) || '—') + '</td><td data-label="Perfil">' + esc(c.perfil || '—') + '</td><td data-label="Ciudad">' + esc(c.ciudad || '—') + '</td>' +
+        '<td class="acciones-fila">' + (c.telefono ? '<a class="btn chico" target="_blank" rel="noopener" href="' + attr(urlWhatsApp(c.telefono)) + '">WhatsApp</a>' : '') + '<button class="btn chico" data-accion="editar-contacto" data-id="' + attr(c.id) + '">Editar</button></td></tr>';
+    });
+    html += '</tbody></table></div>' + (lista.length > 500 ? '<p class="texto2 pad">Se muestran los primeros 500. Afina los filtros para ver el resto.</p>' : '') + '</div>';
+    $('p-contactos').innerHTML = html;
+  }
+  function formContacto(c) {
+    c = c || { segmento: 'recontacto', etapa: 'atraer', estado: 'activo', consentimiento: false, perfil: '', toques: 0 };
+    var s = segmentoDe(c.segmento); var subs = (s && s.subsegmentos) || (s && s.empresas) || [];
+    var h = '<h3>' + (c.id ? 'Editar contacto' : 'Nuevo contacto') + '</h3><form id="formContacto" class="form-grid">' +
+      campo('Nombre', inp('nombre', c.nombre, 'required')) + campo('Teléfono (WhatsApp)', inp('telefono', c.telefono, 'placeholder="+51 9xx xxx xxx"')) + campo('Correo', inp('correo', c.correo, 'type="email"')) +
+      campo('Empresa', inp('empresa', c.empresa)) + campo('Cargo', inp('cargo', c.cargo)) + campo('Ciudad', inp('ciudad', c.ciudad || 'Lima')) +
+      campo('Segmento', '<select name="segmento">' + opcionesSegmentos(c.segmento) + '</select>') + campo('Subsegmento', inp('subsegmento', c.subsegmento, 'list="listaSub"') + '<datalist id="listaSub">' + subs.map(function (x) { return '<option value="' + attr(x) + '">'; }).join('') + '</datalist>') +
+      campo('Origen', inp('origen', c.origen, 'placeholder="Agenda, WhatsApp Business, Breca, LinkedIn…"')) +
+      campo('Perfil', '<select name="perfil">' + opciones([{ valor: 'A', texto: 'A · alto poder adquisitivo' }, { valor: 'B', texto: 'B · pyme' }], c.perfil, 'Sin definir') + '</select>') +
+      campo('Consentimiento (escribió primero)', '<select name="consentimiento">' + opciones([{ valor: 'true', texto: 'Sí' }, { valor: 'false', texto: 'No' }], c.consentimiento ? 'true' : 'false') + '</select>') +
+      campo('Etapa', '<select name="etapa">' + opcionesEtapas(c.etapa) + '</select>') +
+      campo('Estado', '<select name="estado">' + opciones([{ valor: 'activo', texto: 'Activo' }, { valor: 'dormido', texto: 'Dormido (vuelve en la siguiente ola)' }, { valor: 'perdido', texto: 'Perdido' }, { valor: 'b2b', texto: 'Derivado a B2B' }], c.estado || 'activo') + '</select>') +
+      campo('Último contacto', inp('ultimoContacto', c.ultimoContacto, 'type="date"')) + campo('Próximo toque', inp('proximoToque', c.proximoToque, 'type="date"')) +
+      campo('Toques en esta conversación', inp('toques', c.toques || 0, 'type="number" min="0" max="3"')) +
+      campo('Ocasión', inp('ocasion', c.ocasion, 'placeholder="cumpleaños, regalo a clientes, evento…"')) + campo('Personas', inp('personas', c.personas, 'type="number" min="0"')) +
+      campo('Referido por', inp('referidoPor', c.referidoPor)) + campo('Código de referido propio', inp('codigoReferido', c.codigoReferido, 'placeholder="ej. MFR-07"')) +
+      '<label class="campo ancho"><span>Notas</span><textarea name="notas" rows="3">' + esc(c.notas || '') + '</textarea></label>' +
+      '<div class="acciones ancho">' + (c.id ? '<button type="button" class="btn peligro izq" data-accion="eliminar-contacto" data-id="' + attr(c.id) + '">Eliminar</button>' : '') + '<button type="button" class="btn" data-accion="cerrar">Cancelar</button><button type="submit" class="btn primario">Guardar</button></div></form>';
+    abrirModal(h, { ancho: 'ancho' });
+    var form = $('formContacto');
+    form.onsubmit = function (ev) {
+      ev.preventDefault(); var v = leerForm(form);
+      var obj = c.id ? DB.buscar('contactos', c.id) : {}; if (!obj) obj = {};
+      Object.keys(v).forEach(function (k) { obj[k] = v[k]; });
+      obj.consentimiento = v.consentimiento === 'true'; obj.toques = parseInt(v.toques, 10) || 0; obj.telefono = normTelefono(v.telefono); obj.correo = normCorreo(v.correo); obj.personas = v.personas === '' ? '' : Number(v.personas);
+      if (!obj.id) { obj.estado = obj.estado || 'activo'; }
+      // duplicado por teléfono o correo
+      var dup = DB.tabla('contactos').filter(function (x) { return x.id !== obj.id && ((obj.telefono && telefonoDigitos(x.telefono) === telefonoDigitos(obj.telefono)) || (obj.correo && normCorreo(x.correo) === obj.correo)); })[0];
+      if (dup && !c.id) { toast('Ya existe un contacto con ese teléfono o correo: ' + dup.nombre, 'alerta'); return; }
+      DB.upsert('contactos', obj); cerrarModal(); toast('Contacto guardado'); refrescar();
+    };
+    qs('[data-accion="cerrar"]', form).onclick = cerrarModal;
+    var btnEl = qs('[data-accion="eliminar-contacto"]', form);
+    if (btnEl) btnEl.onclick = function () { confirmar('¿Eliminar a ' + (c.nombre || 'este contacto') + '? Sus interacciones y ventas quedan, pero sin contacto asociado.', function () { DB.eliminar('contactos', c.id); toast('Contacto eliminado'); refrescar(); }, 'Eliminar'); };
+    qs('[name="segmento"]', form).onchange = function () { var s2 = segmentoDe(this.value); var dl = $('listaSub'); dl.innerHTML = ((s2 && (s2.subsegmentos || s2.empresas)) || []).map(function (x) { return '<option value="' + attr(x) + '">'; }).join(''); };
+  }
+
+  /* =========================== AJUSTES =========================== */
+  function renderAjustes() {
+    var sub = DB.datos.ui.sub || 'datos'; if (['datos', 'precios', 'metas', 'reglas'].indexOf(sub) < 0) sub = 'datos';
+    var html = '<div class="cabecera-pantalla"><h2>Ajustes</h2><nav class="subnav">' + ['datos|Datos y respaldo', 'precios|Precios y ganchos', 'metas|Metas y tasas', 'reglas|Reglas y segmentos'].map(function (x) { var p = x.split('|'); return '<button class="btn chico' + (sub === p[0] ? ' activa' : '') + '" data-sub="' + p[0] + '">' + p[1] + '</button>'; }).join('') + '</nav></div>';
+    if (sub === 'datos') html += ajustesDatos(); else if (sub === 'precios') html += ajustesPrecios(); else if (sub === 'metas') html += ajustesMetas(); else html += ajustesReglas();
+    $('p-ajustes').innerHTML = html;
+    qsa('[data-sub]', $('p-ajustes')).forEach(function (b) { b.onclick = function () { DB.datos.ui.sub = b.getAttribute('data-sub'); renderAjustes(); }; });
+    enlazarAjustes(sub);
+  }
+  function ajustesDatos() {
+    var d = DB.datos; var prueba = TABLAS.reduce(function (n, t) { return n + d[t].filter(function (x) { return x.prueba; }).length; }, 0);
+    var tam = 0; try { tam = (localStorage.getItem(CLAVE) || '').length; } catch (e) { }
+    return '<div class="grid-2">' +
+      '<div class="tarjeta"><h3>Importar contactos desde CSV</h3><p class="texto2">Agenda de Google o del celular, base de WhatsApp Business o base Breca. Detecta columnas, normaliza teléfonos a +51 y evita duplicados por teléfono o correo.</p><div class="acciones"><button class="btn primario" data-accion="importar-csv">Elegir archivo CSV</button></div>' +
+      '<details class="ayuda"><summary>Cómo exportar mi agenda</summary><ul><li><b>Google Contacts:</b> contacts.google.com → Exportar → Google CSV.</li><li><b>iPhone:</b> iCloud.com → Contactos → exportar vCard y convertir a CSV, o usar la app Contactos de Google.</li><li><b>WhatsApp Business:</b> los contactos viven en la agenda del celular; exporta la agenda. Las etiquetas de WhatsApp no se exportan: usa la columna Segmento o elige el segmento al importar.</li><li><b>Base Breca:</b> cualquier CSV con columnas nombre, empresa, cargo, correo y celular.</li></ul></details></div>' +
+      '<div class="tarjeta"><h3>Respaldo completo (JSON)</h3><p class="texto2">Descarga todo (contactos, interacciones, ventas, embajadores, cuentas, calendario, plantillas y configuración). Hazlo al final de cada día.</p><div class="acciones"><button class="btn primario" data-accion="exportar-json">Descargar respaldo</button><button class="btn" data-accion="importar-json">Restaurar o fusionar un respaldo</button></div><p class="texto3">Último guardado: ' + esc(fechaHora(d.actualizado)) + ' · ' + (tam / 1024).toFixed(0) + ' KB en este navegador.</p></div>' +
+      '<div class="tarjeta"><h3>Exportar a CSV por tabla</h3><div class="acciones">' + TABLAS.map(function (t) { return '<button class="btn chico" data-accion="exportar-csv" data-tabla="' + t + '">' + t + ' (' + entero(d[t].length) + ')</button>'; }).join('') + '</div></div>' +
+      '<div class="tarjeta"><h3>Base del Centro de Mando</h3><p class="texto2">El archivo <code>datos/centro-de-mando.json</code> del repositorio trae los 729 contactos, 42 pedidos, alianzas y el maestro de SKU del registro web. Cárgalo con "Restaurar o fusionar un respaldo" en modo fusionar.</p></div>' +
+      '<div class="tarjeta"><h3>Datos de prueba</h3><p class="texto2">' + (prueba ? prueba + ' registros de prueba cargados (marcados con la etiqueta "prueba").' : 'No hay datos de prueba cargados.') + '</p><div class="acciones">' + (prueba ? '<button class="btn peligro" data-accion="borrar-prueba">Borrar datos de prueba</button>' : '<button class="btn" data-accion="cargar-prueba">Cargar datos de prueba</button>') + '</div></div>' +
+      '<div class="tarjeta borde-alerta"><h3>Zona de cuidado</h3><p class="texto2">Borra todo y vuelve a los datos precargados del plan. Descarga un respaldo antes.</p><div class="acciones"><button class="btn peligro" data-accion="restablecer">Restablecer todo</button></div></div></div>';
+  }
+  function ajustesPrecios() {
+    var c = cfg();
+    var h = '<div class="tarjeta"><h3>Botellas · precios de octubre 2026</h3><div class="tabla-scroll"><table class="tabla edit"><thead><tr><th>Producto</th><th class="num">B2C</th><th class="num">Supermercado</th><th class="num">Breca</th><th>Estado</th></tr></thead><tbody>';
+    c.productos.forEach(function (p, i) { h += '<tr><td data-label="Producto"><b>' + esc(p.nombre) + '</b>' + (p.nota ? '<br><small class="texto3">' + esc(p.nota) + '</small>' : '') + '</td><td data-label="B2C" class="num"><input data-tabla="productos" data-i="' + i + '" data-campo="b2c" type="number" step="0.01" value="' + attr(p.b2c) + '"></td><td data-label="Supermercado" class="num"><input data-tabla="productos" data-i="' + i + '" data-campo="supermercado" type="number" step="0.01" value="' + attr(p.supermercado == null ? '' : p.supermercado) + '"></td><td data-label="Breca" class="num"><input data-tabla="productos" data-i="' + i + '" data-campo="breca" type="number" step="0.01" value="' + attr(p.breca == null ? '' : p.breca) + '"></td><td data-label="Estado"><select data-tabla="productos" data-i="' + i + '" data-campo="estado">' + opciones([{ valor: 'vigente', texto: 'Vigente' }, { valor: 'por_confirmar', texto: 'Por confirmar' }], p.estado) + '</select></td></tr>'; });
+    h += '</tbody></table></div><p class="texto3">El 25 % Breca aplica solo a experiencias, no a botellas. Sobre qué precio aplica sigue por confirmar.</p></div>';
+    h += '<div class="tarjeta"><h3>Packs</h3><div class="tabla-scroll"><table class="tabla edit"><thead><tr><th>Pack</th><th class="num">Precio</th><th class="num">Anaquel</th><th>Estado</th><th>Fuente</th></tr></thead><tbody>';
+    c.packs.forEach(function (p, i) { h += '<tr><td data-label="Pack">' + esc(p.nombre) + '</td><td data-label="Precio" class="num"><input data-tabla="packs" data-i="' + i + '" data-campo="precio" type="number" step="0.01" value="' + attr(p.precio == null ? '' : p.precio) + '"></td><td data-label="Anaquel" class="num"><input data-tabla="packs" data-i="' + i + '" data-campo="anaquel" type="number" step="0.01" value="' + attr(p.anaquel == null ? '' : p.anaquel) + '"></td><td data-label="Estado"><select data-tabla="packs" data-i="' + i + '" data-campo="estado">' + opciones([{ valor: 'vigente', texto: 'Vigente' }, { valor: 'por_confirmar', texto: 'Por confirmar' }], p.estado) + '</select></td><td data-label="Fuente"><small class="texto3">' + esc(p.fuente || '') + '</small></td></tr>'; });
+    h += '</tbody></table></div></div>';
+    h += '<div class="tarjeta"><h3>Experiencias · por persona</h3><div class="tabla-scroll"><table class="tabla edit"><thead><tr><th>Experiencia</th><th class="num">Precio</th><th class="num">Con 25 % Breca</th></tr></thead><tbody>';
+    c.experiencias.forEach(function (p, i) { h += '<tr><td data-label="Experiencia">' + esc(p.nombre) + '</td><td data-label="Precio" class="num"><input data-tabla="experiencias" data-i="' + i + '" data-campo="precio" type="number" step="0.01" value="' + attr(p.precio) + '"></td><td data-label="Breca" class="num">' + soles(p.precio * (1 - c.reglas.descuentoBrecaExperiencias)) + '</td></tr>'; });
+    h += '</tbody></table></div></div>';
+    h += '<div class="tarjeta"><h3>Paquetes para grupos (30 personas, salón del Westin incluido)</h3><div class="tabla-scroll"><table class="tabla edit"><thead><tr><th>Paquete</th><th class="num">Precio (30 p.)</th><th class="num">Por persona</th><th>Estado</th></tr></thead><tbody>';
+    c.paquetesGrupo.forEach(function (p, i) { h += '<tr><td data-label="Paquete">' + esc(p.nombre) + '</td><td data-label="Precio" class="num"><input data-tabla="paquetesGrupo" data-i="' + i + '" data-campo="precio30" type="number" step="1" value="' + attr(p.precio30) + '"></td><td data-label="Por persona" class="num">' + soles(p.precio30 / p.personasBase) + '</td><td data-label="Estado"><select data-tabla="paquetesGrupo" data-i="' + i + '" data-campo="estado">' + opciones([{ valor: 'vigente', texto: 'Vigente' }, { valor: 'por_confirmar', texto: 'Por confirmar' }], p.estado) + '</select></td></tr>'; });
+    h += '</tbody></table></div></div>';
+    h += '<div class="tarjeta"><h3>Ganchos por ola (sin bajar precio)</h3><div class="tabla-scroll"><table class="tabla edit"><thead><tr><th>Ola</th><th>Gancho</th><th>Vigencia</th><th>Condición</th><th>Estado</th></tr></thead><tbody>';
+    c.ganchos.forEach(function (g, i) { h += '<tr><td data-label="Ola">' + g.ola + '</td><td data-label="Gancho"><b>' + esc(g.nombre) + '</b><br><textarea data-tabla="ganchos" data-i="' + i + '" data-campo="texto" rows="2">' + esc(g.texto) + '</textarea></td><td data-label="Vigencia">' + esc(fechaCorta(g.desde)) + ' – ' + esc(fechaCorta(g.hasta)) + '</td><td data-label="Condición"><small>' + esc(g.condicion || '') + '</small></td><td data-label="Estado"><select data-tabla="ganchos" data-i="' + i + '" data-campo="estado">' + opciones([{ valor: 'pendiente', texto: 'Pendiente de aprobación' }, { valor: 'activo', texto: 'Activo' }, { valor: 'inactivo', texto: 'Inactivo' }], g.estado) + '</select></td></tr>'; });
+    h += '</tbody></table></div><p class="texto3">Mientras un gancho esté pendiente, los mensajes usan la variable {gancho} con un texto neutro.</p></div>';
+    return h;
+  }
+  function ajustesMetas() {
+    var M = cfg().metas; var meses = ['2026-10', '2026-11', '2026-12'];
+    var h = '<div class="tarjeta"><h3>Metas mensuales</h3><div class="tabla-scroll"><table class="tabla edit"><thead><tr><th>Mes</th><th class="num">Cuota oficial</th><th class="num">Proyección (plan)</th><th class="num">Venta previa a descontar</th></tr></thead><tbody>';
+    meses.forEach(function (m) { h += '<tr><td data-label="Mes">' + esc(nombreMes(m)) + '</td><td data-label="Cuota" class="num"><input data-meta="cuotaOficial" data-mes="' + m + '" type="number" step="1" value="' + attr(M.cuotaOficial[m]) + '"></td><td data-label="Proyección" class="num"><input data-meta="proyeccion" data-mes="' + m + '" type="number" step="1" value="' + attr(M.proyeccion[m]) + '"></td><td data-label="Previa" class="num"><input data-meta="ventaPrevia" data-mes="' + m + '" type="number" step="1" value="' + attr((M.ventaPrevia && M.ventaPrevia[m]) || 0) + '"></td></tr>'; });
+    h += '<tr class="total"><td>Trimestre</td><td class="num">' + soles(meses.reduce(function (s, m) { return s + (M.cuotaOficial[m] || 0); }, 0)) + '</td><td class="num">' + soles(meses.reduce(function (s, m) { return s + (M.proyeccion[m] || 0); }, 0)) + '</td><td></td></tr></tbody></table></div>' +
+      '<p class="texto3">Mix objetivo: ' + pct(M.mix.botellas, 0) + ' botellas / ' + pct(M.mix.experiencia, 0) + ' experiencia. Al cambiar metas, pulsa "Recalcular calendario" para repartir la meta del día.</p><div class="acciones"><button class="btn" data-accion="recalcular-calendario">Recalcular metas del calendario</button></div></div>';
+    h += '<div class="tarjeta"><h3>Tasas del plan por segmento</h3><div class="tabla-scroll"><table class="tabla edit"><thead><tr><th>Segmento</th><th class="num">Respuesta</th><th class="num">Compra</th><th>Fuente</th></tr></thead><tbody>';
+    cfg().segmentos.forEach(function (s) { var t = cfg().tasasPlan[s.codigo] || { respuesta: 0, compra: 0 }; h += '<tr><td data-label="Segmento">' + esc(s.nombre) + '</td><td data-label="Respuesta" class="num"><input data-tasa="respuesta" data-seg="' + s.codigo + '" type="number" step="0.1" value="' + attr((t.respuesta * 100).toFixed(1)) + '"> %</td><td data-label="Compra" class="num"><input data-tasa="compra" data-seg="' + s.codigo + '" type="number" step="0.1" value="' + attr((t.compra * 100).toFixed(1)) + '"> %</td><td data-label="Fuente"><small class="texto3">' + esc(t.fuente || '') + '</small></td></tr>'; });
+    h += '</tbody></table></div></div>';
+    h += '<div class="tarjeta"><h3>Cortes de control</h3><p>' + cfg().cortes.map(function (c) { return '<span class="chip">' + esc(fechaCorta(c.fecha)) + ' · ' + esc(c.nombre) + '</span>'; }).join(' ') + '</p></div>';
+    return h;
+  }
+  function ajustesReglas() {
+    var R = cfg().reglas, C = cfg().cadencias;
+    var h = '<div class="tarjeta"><h3>Reglas de contacto</h3><div class="form-grid">' +
+      campo('Máximo de toques por conversación', '<input data-regla="maxToques" type="number" value="' + R.maxToques + '">') +
+      campo('Días de bloqueo tras un contacto', '<input data-regla="diasBloqueo" type="number" value="' + R.diasBloqueo + '">') +
+      campo('Días mínimos entre mensajes de ola', '<input data-regla="diasEntreOlas" type="number" value="' + R.diasEntreOlas + '">') +
+      campo('Cadencia consumidor (días desde el primer toque)', '<input data-cadencia="consumidor" value="' + attr(C.consumidor.join(', ')) + '">') +
+      campo('Cadencia empresa (corporativo, pymes, grupos)', '<input data-cadencia="empresa" value="' + attr(C.empresa.join(', ')) + '">') +
+      campo('Umbral B2B · botellas (más de)', '<input data-regla="umbralBotellasB2B" type="number" value="' + R.umbralBotellasB2B + '">') +
+      campo('Umbral B2B · soles (más de)', '<input data-regla="umbralSolesB2B" type="number" value="' + R.umbralSolesB2B + '">') +
+      campo('Comisión base de embajadores', '<input data-regla="comisionBase" type="number" step="0.01" value="' + R.comisionBase + '">') +
+      campo('Comisión alta', '<input data-regla="comisionAlta" type="number" step="0.01" value="' + R.comisionAlta + '">') +
+      campo('Umbral mensual para comisión alta (S/)', '<input data-regla="umbralComisionMes" type="number" value="' + R.umbralComisionMes + '">') +
+      campo('Leyendas en mensajes masivos', '<select data-regla="leyendasEnMasivos">' + opciones([{ valor: 'true', texto: 'Sí, siempre' }, { valor: 'false', texto: 'No' }], String(R.leyendasEnMasivos)) + '</select>') +
+      '</div><p class="texto3">Leyendas: ' + esc(cfg().leyendas.join(' · ')) + '. Umbral B2B: propuesta del plan, por confirmar con Renato.</p></div>';
+    h += '<div class="tarjeta"><h3>Segmentos</h3><div class="tabla-scroll"><table class="tabla"><thead><tr><th>Segmento</th><th>Detalle</th><th>Cadencia</th><th>Trato</th></tr></thead><tbody>' + cfg().segmentos.map(function (s) { return '<tr><td data-label="Segmento"><span class="chip seg-' + esc(s.codigo) + '">' + esc(s.num + ' · ' + s.nombre) + '</span></td><td data-label="Detalle">' + esc(s.detalle) + (s.empresas ? '<br><small class="texto3">' + esc(s.empresas.join(', ')) + '</small>' : '') + '</td><td data-label="Cadencia">' + esc(s.cadencia) + '</td><td data-label="Trato">' + esc(s.trato) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+    return h;
+  }
+  function enlazarAjustes(sub) {
+    var raiz = $('p-ajustes');
+    qsa('input[data-tabla],select[data-tabla],textarea[data-tabla]', raiz).forEach(function (el) {
+      el.onchange = function () {
+        var t = cfg()[el.getAttribute('data-tabla')], i = +el.getAttribute('data-i'), k = el.getAttribute('data-campo');
+        var v = el.value; if (el.type === 'number') v = v === '' ? null : Number(v);
+        t[i][k] = v; DB.guardarPronto(); toast('Guardado');
+      };
+    });
+    qsa('input[data-meta]', raiz).forEach(function (el) { el.onchange = function () { var M = cfg().metas; var k = el.getAttribute('data-meta'); if (!M[k]) M[k] = {}; M[k][el.getAttribute('data-mes')] = Number(el.value) || 0; DB.guardarPronto(); toast('Guardado · recalcula el calendario'); }; });
+    qsa('input[data-tasa]', raiz).forEach(function (el) { el.onchange = function () { var T = cfg().tasasPlan; var s = el.getAttribute('data-seg'); if (!T[s]) T[s] = { respuesta: 0, compra: 0 }; T[s][el.getAttribute('data-tasa')] = (Number(el.value) || 0) / 100; DB.guardarPronto(); toast('Guardado'); }; });
+    qsa('[data-regla]', raiz).forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-regla'); var v = el.value; if (k === 'leyendasEnMasivos') v = v === 'true'; else v = Number(v); cfg().reglas[k] = v; DB.guardarPronto(); toast('Guardado'); }; });
+    qsa('[data-cadencia]', raiz).forEach(function (el) { el.onchange = function () { var arr = el.value.split(/[,\s]+/).map(Number).filter(function (x) { return !isNaN(x); }); if (arr.length >= 2) { cfg().cadencias[el.getAttribute('data-cadencia')] = arr; DB.guardarPronto(); toast('Guardado'); } else toast('Escribe al menos dos números, por ejemplo 0, 2, 5', 'alerta'); }; });
+  }
+
+  /* =========================== Importador CSV (asistente) =========================== */
+  var importState = null;
+  function asistenteCSV(texto, nombreArchivo) {
+    var parsed = parseCSV(texto);
+    if (!parsed.cabeceras.length) { toast('El archivo está vacío o no se pudo leer.', 'alerta'); return; }
+    importState = { parsed: parsed, nombre: nombreArchivo, mapeo: adivinarMapeo(parsed.cabeceras), defectos: { segmento: 'recontacto', subsegmento: '', origen: nombreArchivo || 'CSV', perfil: '', consentimiento: false, ciudad: '' }, politica: 'completar' };
+    var sugeridoSeg = /breca/i.test(nombreArchivo) ? 'breca' : /whats/i.test(nombreArchivo) ? 'recontacto' : /google|contact|agenda|iphone|celular/i.test(nombreArchivo) ? 'boca' : 'recontacto';
+    importState.defectos.segmento = sugeridoSeg; importState.defectos.consentimiento = sugeridoSeg === 'recontacto';
+    renderAsistente();
+  }
+  function renderAsistente() {
+    var st = importState, p = st.parsed;
+    var colOpc = p.cabeceras.map(function (c, i) { return { valor: String(i), texto: c }; });
+    var h = '<h3>Importar contactos · ' + esc(st.nombre) + '</h3><p class="texto2">' + entero(p.filas.length) + ' filas · ' + p.cabeceras.length + ' columnas · separador "' + (p.delim === '\t' ? 'tabulador' : p.delim) + '". Revisa a qué campo va cada columna.</p>';
+    h += '<div class="form-grid">';
+    CAMPOS_IMPORT.forEach(function (c) { h += campo(c.etiqueta, '<select data-mapeo="' + c.campo + '">' + opciones(colOpc, st.mapeo[c.campo] == null ? '' : String(st.mapeo[c.campo]), '— no importar —') + '</select>'); });
+    h += '</div><h4>Valores para toda la carga (si el archivo no trae la columna)</h4><div class="form-grid">' +
+      campo('Segmento', '<select data-defecto="segmento">' + opcionesSegmentos(st.defectos.segmento) + '</select>') +
+      campo('Subsegmento', '<input data-defecto="subsegmento" value="' + attr(st.defectos.subsegmento) + '">') +
+      campo('Origen', '<input data-defecto="origen" value="' + attr(st.defectos.origen) + '">') +
+      campo('Ciudad', '<input data-defecto="ciudad" value="' + attr(st.defectos.ciudad) + '" placeholder="Lima">') +
+      campo('Perfil', '<select data-defecto="perfil">' + opciones([{ valor: 'A', texto: 'A · alto poder adquisitivo' }, { valor: 'B', texto: 'B · pyme' }], st.defectos.perfil, 'Sin definir') + '</select>') +
+      campo('Consentimiento (ya nos escribieron)', '<select data-defecto="consentimiento">' + opciones([{ valor: 'true', texto: 'Sí, escribieron primero' }, { valor: 'false', texto: 'No' }], String(st.defectos.consentimiento)) + '</select>') +
+      campo('Si ya existe (mismo teléfono o correo)', '<select data-politica>' + opciones([{ valor: 'completar', texto: 'Completar datos vacíos (recomendado)' }, { valor: 'sobrescribir', texto: 'Sobrescribir con el archivo' }, { valor: 'omitir', texto: 'Omitir la fila' }], st.politica) + '</select>') +
+      '</div>';
+    var vista = filasAContactos(p, st.mapeo, st.defectos).slice(0, 5);
+    h += '<h4>Vista previa (5 primeras filas)</h4><div class="tabla-scroll"><table class="tabla compacta"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Empresa</th><th>Cargo</th><th>Ciudad</th><th>Segmento</th></tr></thead><tbody>' + vista.map(function (c) { return '<tr><td>' + esc(c.nombre) + '</td><td>' + esc(c.telefono) + '</td><td>' + esc(c.correo) + '</td><td>' + esc(c.empresa) + '</td><td>' + esc(c.cargo) + '</td><td>' + esc(c.ciudad) + '</td><td>' + esc(nombreSegmento(c.segmento)) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    h += '<div class="acciones"><button class="btn" data-accion="cerrar">Cancelar</button><button class="btn primario" data-accion="ejecutar-import">Importar ' + entero(p.filas.length) + ' filas</button></div>';
+    abrirModal(h, { ancho: 'ancho', sinFoco: true });
+    var m = $('modalContenido');
+    qsa('[data-mapeo]', m).forEach(function (el) { el.onchange = function () { var v = el.value; if (v === '') delete st.mapeo[el.getAttribute('data-mapeo')]; else st.mapeo[el.getAttribute('data-mapeo')] = +v; renderAsistente(); }; });
+    qsa('[data-defecto]', m).forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-defecto'); st.defectos[k] = k === 'consentimiento' ? el.value === 'true' : el.value; renderAsistente(); }; });
+    qs('[data-politica]', m).onchange = function () { st.politica = this.value; };
+    qs('[data-accion="cerrar"]', m).onclick = cerrarModal;
+    qs('[data-accion="ejecutar-import"]', m).onclick = function () {
+      if (st.mapeo.nombre == null && st.mapeo.telefono == null) { toast('Elige al menos la columna de nombre o de teléfono.', 'alerta'); return; }
+      var contactos = filasAContactos(p, st.mapeo, st.defectos);
+      var r = fusionarContactos(contactos, st.politica);
+      cerrarModal(); refrescar();
+      abrirModal('<h3>Importación terminada</h3><ul class="lista-resumen"><li><b>' + entero(r.nuevos) + '</b> contactos nuevos</li><li><b>' + entero(r.duplicadosActualizados) + '</b> ya existían y se ' + (st.politica === 'sobrescribir' ? 'sobrescribieron' : 'completaron') + '</li><li><b>' + entero(r.omitidos) + '</b> omitidos por duplicado</li><li><b>' + entero(r.sinDato) + '</b> filas sin teléfono ni correo (se importaron igual; revísalas)</li></ul>' + (r.detalle.length ? '<details><summary>Ver duplicados (' + r.detalle.length + ')</summary><ul>' + r.detalle.slice(0, 200).map(function (x) { return '<li>' + esc(x.nombre) + ' → ' + esc(x.con) + (x.tipo === 'omitido' ? ' (omitido)' : '') + '</li>'; }).join('') + '</ul></details>' : '') + '<div class="acciones"><button class="btn primario" data-accion="cerrar">Listo</button></div>');
+      qs('[data-accion="cerrar"]', $('modalContenido')).onclick = function () { cerrarModal(); navegar('contactos'); };
+    };
+  }
+
+  /* =========================== Acciones globales =========================== */
+  function leerArchivo(input, cb) {
+    var f = input.files && input.files[0]; if (!f) return;
+    var lector = new FileReader();
+    lector.onload = function () { cb(String(lector.result), f.name); input.value = ''; };
+    lector.onerror = function () { toast('No se pudo leer el archivo', 'alerta'); };
+    lector.readAsText(f, 'utf-8');
+  }
+  function importarJSONDialogo(texto, nombre) {
+    var json; try { json = JSON.parse(texto); } catch (e) { toast('El archivo no es un JSON válido', 'alerta'); return; }
+    if (!json || json.formato !== 'vdo-crm-respaldo') { toast('No es un respaldo de este CRM', 'alerta'); return; }
+    var tot = Object.keys(json.tablas || {}).map(function (t) { return t + ': ' + entero((json.tablas[t] || []).length); }).join(' · ');
+    abrirModal('<h3>Restaurar o fusionar · ' + esc(nombre) + '</h3><p class="texto2">Generado ' + esc(fechaHora(json.generado || '')) + (json.fuente ? ' · ' + esc(json.fuente) : '') + '</p><p>' + esc(tot) + '</p>' +
+      '<div class="acciones col"><button class="btn primario" data-modo="fusionar">Fusionar con lo que tengo (añade y completa; evita duplicados por teléfono o correo)</button><button class="btn peligro" data-modo="reemplazar">Reemplazar todo con este respaldo</button><button class="btn" data-accion="cerrar">Cancelar</button></div>');
+    var m = $('modalContenido');
+    qs('[data-accion="cerrar"]', m).onclick = cerrarModal;
+    qsa('[data-modo]', m).forEach(function (b) {
+      b.onclick = function () {
+        var modo = b.getAttribute('data-modo');
+        var correr = function () { try { var r = DB.importar(json, modo); cerrarModal(); toast(modo === 'reemplazar' ? 'Respaldo restaurado' : 'Respaldo fusionado'); navegar('contactos'); console.log('Importación', r); } catch (e) { toast(e.message, 'alerta'); } };
+        if (modo === 'reemplazar') confirmar('Esto borra todo lo que hay en este navegador y lo reemplaza por el respaldo. ¿Continuar?', correr, 'Reemplazar'); else correr();
+      };
+    });
+  }
+  function accionGlobal(accion, el) {
+    switch (accion) {
+      case 'nuevo-contacto': formContacto(null); break;
+      case 'editar-contacto': formContacto(DB.buscar('contactos', el.getAttribute('data-id'))); break;
+      case 'exportar-contactos': { var t = DB.tabla('contactos'); descargar('contactos-' + hoyISO() + '.csv', aCSV(t, columnasDe(t)), 'text/csv;charset=utf-8'); break; }
+      case 'exportar-csv': { var tb = el.getAttribute('data-tabla'); var tt = DB.tabla(tb); descargar(tb + '-' + hoyISO() + '.csv', aCSV(tt, columnasDe(tt)), 'text/csv;charset=utf-8'); break; }
+      case 'exportar-json': descargar('vdo-crm-respaldo-' + hoyISO() + '.json', JSON.stringify(DB.exportar(), null, 1), 'application/json'); toast('Respaldo descargado'); break;
+      case 'importar-json': $('archivoJson').click(); break;
+      case 'importar-csv': $('archivoCsv').click(); break;
+      case 'borrar-prueba': confirmar('¿Borrar los datos de prueba? Tus datos reales no se tocan.', function () { var n = DB.borrarPrueba(); toast(n + ' registros de prueba borrados'); refrescar(); }, 'Borrar'); break;
+      case 'cargar-prueba': { var n = DB.cargarPrueba(); toast(n + ' registros de prueba cargados'); refrescar(); break; }
+      case 'restablecer': confirmar('Esto borra TODO (contactos, ventas, calendario editado) y vuelve a los datos precargados. ¿Descargaste un respaldo?', function () { DB.restablecer(); toast('CRM restablecido'); navegar('hoy'); }, 'Sí, borrar todo'); break;
+      case 'recalcular-calendario': {
+        var nuevo = generarCalendario(cfg()); var actual = DB.tabla('calendario');
+        nuevo.forEach(function (d) { var viejo = actual.filter(function (x) { return x.fecha === d.fecha; })[0]; if (viejo) { d.estado = viejo.estado; d.notas = viejo.notas; if (viejo.focoEditado) { d.foco = viejo.foco; d.focoEditado = true; } if (viejo.cuotasEditadas) { d.cuotas = viejo.cuotas; d.cuotasEditadas = true; } } });
+        DB.datos.calendario = nuevo; DB.guardar(); toast('Calendario recalculado'); break;
+      }
+      case 'limpiar-filtros': DB.datos.ui.filtros.contactos = null; renderContactos(); break;
+      case 'cerrar': cerrarModal(); break;
+    }
+  }
+
+  /* =========================== Arranque =========================== */
+  function iniciar() {
+    DB.cargar();
+    if (DB.datos.ui.primeraVez) { DB.cargarPrueba(); DB.datos.ui.primeraVez = false; DB.guardar(); }
+    $('hoyFecha').textContent = fechaCorta(hoyISO());
+    document.body.addEventListener('click', function (ev) {
+      var el = ev.target.closest('[data-pantalla],[data-ir],[data-accion]');
+      if (!el) return;
+      if (el.hasAttribute('data-pantalla')) { navegar(el.getAttribute('data-pantalla')); return; }
+      if (el.hasAttribute('data-ir')) { var filtro = el.getAttribute('data-filtro'); if (filtro) { var f = filtrosContactos(); f.toque = filtro; } navegar(el.getAttribute('data-ir'), el.getAttribute('data-sub')); return; }
+      var acc = el.getAttribute('data-accion'); if (acc && !el.closest('#modalContenido') || acc === 'cerrar') { ev.preventDefault(); accionGlobal(acc, el); }
+      else if (acc && el.closest('#modalContenido') && ['editar-contacto', 'nuevo-contacto'].indexOf(acc) < 0 && !el.onclick) { accionGlobal(acc, el); }
+    });
+    $('p-contactos').addEventListener('input', function (ev) { var el = ev.target; if (!el.name || !el.closest('.filtros')) return; var f = filtrosContactos(); f[el.name] = el.value; DB.guardarPronto(); clearTimeout(window._tf); window._tf = setTimeout(renderContactos, el.type === 'search' ? 200 : 0); });
+    $('p-contactos').addEventListener('change', function (ev) { var el = ev.target; if (!el.name || !el.closest('.filtros')) return; var f = filtrosContactos(); f[el.name] = el.value; DB.guardarPronto(); renderContactos(); });
+    $('archivoCsv').addEventListener('change', function () { leerArchivo(this, asistenteCSV); });
+    $('archivoJson').addEventListener('change', function () { leerArchivo(this, importarJSONDialogo); });
+    qs('.modal-cerrar').onclick = cerrarModal;
+    $('modal').addEventListener('click', function (ev) { if (ev.target === $('modal')) cerrarModal(); });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('modal').hidden) cerrarModal(); });
+    window.addEventListener('beforeunload', function () { if (DB._timer) { clearTimeout(DB._timer); DB.guardar(); } });
+    navegar(DB.datos.ui.pantalla || 'hoy');
+  }
+
+  window.VDO = {
+    DB: DB, util: { hoyISO: hoyISO, ahoraISO: ahoraISO, isoDe: isoDe, fechaCorta: fechaCorta, fechaLarga: fechaLarga, soles: soles, numero: numero, normTelefono: normTelefono, telefonoDigitos: telefonoDigitos, normCorreo: normCorreo, sumarDias: sumarDias, diasEntre: diasEntre, parseCSV: parseCSV, adivinarMapeo: adivinarMapeo, aCSV: aCSV, nuevoId: nuevoId },
+    reglas: { puedeIniciarOla: puedeIniciarOla, derivarB2B: derivarB2B, proximoToqueTras: proximoToqueTras, cadenciaDe: cadenciaDe, olaDe: olaDe, ganchosDe: ganchosDe, armarMensaje: armarMensaje, urlWhatsApp: urlWhatsApp, urlCorreo: urlCorreo, variablesDe: variablesDe },
+    importar: { fusionarContactos: fusionarContactos, filasAContactos: filasAContactos, asistenteCSV: asistenteCSV, importarJSONDialogo: importarJSONDialogo },
+    ui: { navegar: navegar, refrescar: refrescar, toast: toast, abrirModal: abrirModal, cerrarModal: cerrarModal, copiar: copiar, formContacto: formContacto },
+    generarCalendario: generarCalendario
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+
+</script>
+</body>
+</html>

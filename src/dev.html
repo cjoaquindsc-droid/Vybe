@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#080808">
+<title>CRM B2C · The Pisco Room · Viñas de Oro</title>
+<meta name="description" content="CRM operativo del canal B2C de Bodegas Viñas de Oro. Local, sin servidor: los datos viven en este navegador (localStorage).">
+<meta name="generador" content="herramientas/ensamblar.py · 2026-10-07">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23080808' stroke='%23d4af37' stroke-width='3'/%3E%3Ctext x='32' y='40' font-family='Futura,Arial' font-size='22' text-anchor='middle' fill='%23d4af37'%3EVdO%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="crm-estilos.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">VdO</span>
+    <div><h1>The Pisco Room · CRM B2C</h1><small>Viñas de Oro · Q4 2026 · <span id="hoyFecha"></span></small></div>
+  </div>
+  <nav class="nav" aria-label="Pantallas">
+    <button data-pantalla="hoy">Hoy</button>
+    <button data-pantalla="calendario">Calendario</button>
+    <button data-pantalla="contactos">Contactos</button>
+    <button data-pantalla="pipeline">Pipeline</button>
+    <button data-pantalla="ventas">Ventas</button>
+    <button data-pantalla="metricas">Métricas</button>
+    <button data-pantalla="plantillas">Plantillas</button>
+    <button data-pantalla="reporte">Reporte</button>
+    <button data-pantalla="ajustes">Ajustes</button>
+  </nav>
+  <div class="topbar-right"><span id="estadoGuardado"></span></div>
+</header>
+
+<main id="main">
+  <section id="p-hoy" class="pantalla" hidden></section>
+  <section id="p-calendario" class="pantalla" hidden></section>
+  <section id="p-contactos" class="pantalla" hidden></section>
+  <section id="p-pipeline" class="pantalla" hidden></section>
+  <section id="p-ventas" class="pantalla" hidden></section>
+  <section id="p-metricas" class="pantalla" hidden></section>
+  <section id="p-plantillas" class="pantalla" hidden></section>
+  <section id="p-reporte" class="pantalla" hidden></section>
+  <section id="p-ajustes" class="pantalla" hidden></section>
+</main>
+
+<nav class="tabbar-movil" aria-label="Pantallas (celular)">
+  <button data-pantalla="hoy">Hoy</button>
+  <button data-pantalla="calendario">Calendario</button>
+  <button data-pantalla="contactos">Contactos</button>
+  <button data-pantalla="pipeline">Pipeline</button>
+  <button data-pantalla="ventas">Ventas</button>
+  <button data-pantalla="metricas">Métricas</button>
+  <button data-pantalla="plantillas">Plantillas</button>
+  <button data-pantalla="reporte">Reporte</button>
+  <button data-pantalla="ajustes">Ajustes</button>
+</nav>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-caja">
+    <button class="modal-cerrar" aria-label="Cerrar">&times;</button>
+    <div id="modalContenido"></div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+<input type="file" id="archivoCsv" accept=".csv,.txt,.tsv" hidden>
+<input type="file" id="archivoJson" accept=".json,application/json" hidden>
+
+<script src="crm-datos.js"></script>
+<script src="crm-logica.js"></script>
+</body>
+</html>
