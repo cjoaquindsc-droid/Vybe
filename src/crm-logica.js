@@ -920,7 +920,7 @@
     if (ult && ult.fecha.slice(0, 10) === hoy && ult.resultado !== 'compro') { ult.resultado = 'compro'; DB.upsert('interacciones', ult); }
     else registrarInteraccion({ contactoId: contacto.id, canal: 'whatsapp', toque: '', resultado: 'compro', mensaje: venta ? 'Venta ' + venta.id : '' , codigoOrigen: venta ? venta.codigoOrigen : '' });
   }
-  function marcarDormido(contacto, motivo) { contacto.estado = 'dormido'; contacto.proximoToque = ''; contacto.cierrePendiente = false; contacto.toques = 0; contacto.notas = ((contacto.notas || '') + '\n' + fechaCorta(hoyISO()) + ': dormido' + (motivo ? ' · ' + motivo : '')).trim(); DB.upsert('contactos', contacto); }
+  function marcarDormido(contacto, motivo) { contacto.estado = 'dormido'; contacto.proximoToque = ''; contacto.cierrePendiente = false; contacto.toques = 0; if (!isoDe(contacto.ultimaOla)) contacto.ultimaOla = hoyISO(); /* vuelve recién en la siguiente ola */ contacto.notas = ((contacto.notas || '') + '\n' + fechaCorta(hoyISO()) + ': dormido' + (motivo ? ' · ' + motivo : '')).trim(); DB.upsert('contactos', contacto); }
   function marcarPerdido(contacto, motivo) { contacto.estado = 'perdido'; contacto.proximoToque = ''; contacto.cierrePendiente = false; contacto.notas = ((contacto.notas || '') + '\n' + fechaCorta(hoyISO()) + ': perdido' + (motivo ? ' · ' + motivo : '')).trim(); DB.upsert('contactos', contacto); }
   // Mantenimiento: quien no respondió al tercer toque y ya pasó la fecha de cierre pasa a dormido
   function mantenimientoDiario() {
@@ -965,7 +965,7 @@
     var inter = DB.tabla('interacciones').filter(function (i) { return i.fecha.slice(0, 10) === fecha; });
     var ventas = DB.tabla('ventas').filter(function (v) { return (v.fechaCierre || v.fecha) === fecha && ['pagado', 'entregado'].indexOf(v.estado) >= 0 && !v.derivarB2B; });
     var cuotaTotal = dia ? Object.keys(dia.cuotas).reduce(function (s, k) { return s + (Number(dia.cuotas[k]) || 0); }, 0) : 0;
-    return { fecha: fecha, dia: dia, enviados: inter.filter(function (i) { return i.resultado !== 'respondio' || i.toque !== ''; }).length, respondieron: inter.filter(function (i) { return i.resultado === 'respondio' || i.resultado === 'compro'; }).length, compraron: ventas.length, ventaDia: ventas.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0), metaDia: dia ? dia.metaDia : 0, cuotaDia: dia ? dia.cuotaDia : 0, cuotaContactos: cuotaTotal };
+    return { fecha: fecha, dia: dia, enviados: inter.filter(function (i) { return String(i.toque) !== '' || i.resultado === 'enviado'; }).length, respondieron: inter.filter(function (i) { return i.resultado === 'respondio' || i.resultado === 'compro'; }).length, compraron: ventas.length, ventaDia: ventas.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0), metaDia: dia ? dia.metaDia : 0, cuotaDia: dia ? dia.cuotaDia : 0, cuotaContactos: cuotaTotal };
   }
 
   /* =========================== Formulario de venta (compartido) =========================== */
@@ -1120,7 +1120,7 @@
       case 'recalcular-calendario': {
         var nuevo = generarCalendario(cfg()); var actual = DB.tabla('calendario');
         nuevo.forEach(function (d) { var viejo = actual.filter(function (x) { return x.fecha === d.fecha; })[0]; if (viejo) { d.estado = viejo.estado; d.notas = viejo.notas; if (viejo.focoEditado) { d.foco = viejo.foco; d.focoEditado = true; } if (viejo.cuotasEditadas) { d.cuotas = viejo.cuotas; d.cuotasEditadas = true; } } });
-        DB.datos.calendario = nuevo; DB.guardar(); toast('Calendario recalculado'); break;
+        DB.datos.calendario = nuevo; DB.guardar(); toast('Calendario recalculado'); refrescar(); break;
       }
       case 'limpiar-filtros': DB.datos.ui.filtros.contactos = null; DB.guardarPronto(); renderContactos(false); break;
       case 'registrar-venta': formVenta(null, { contacto: el.getAttribute('data-id') ? DB.buscar('contactos', el.getAttribute('data-id')) : null }); break;
