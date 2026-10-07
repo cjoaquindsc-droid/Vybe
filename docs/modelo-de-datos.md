@@ -19,10 +19,11 @@ Cada registro tiene `id`, `createdAt`, `updatedAt` (hora de Lima, `AAAA-MM-DDTHH
 | origen | de dónde salió (Agenda, WhatsApp Business, Base Breca, LinkedIn, Centro de Mando…) |
 | perfil | `A` alto poder adquisitivo · `B` pyme · vacío |
 | consentimiento | `true` si escribió primero (obligatorio para que el número de la empresa le escriba) |
-| ultimoContacto, proximoToque, inicioConversacion, ultimaOla | fechas |
+| ultimoContacto, proximoToque, inicioConversacion, ultimaOla, ultimaRespuesta | fechas |
 | etapa | `atraer` · `iniciar` · `calificar` · `proponer` · `cerrar` · `fidelizar` |
 | estado | `activo` · `dormido` · `perdido` · `b2b` |
 | toques | 0–3 en la conversación actual |
+| respondio, cierrePendiente, yaCompro | booleanos que fija el embudo (respondió en esta conversación; tercer toque enviado sin respuesta; ya compró alguna vez) |
 | ocasion, personas, notas, referidoPor, codigoReferido | texto / número |
 | cmId, cmTipo, cmClasificacion, cmPrioridad, interes, totalInvertido, canalPreferido | compatibilidad con el Centro de Mando |
 

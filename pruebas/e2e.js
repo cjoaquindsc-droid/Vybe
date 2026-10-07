@@ -263,7 +263,59 @@ function ok(cond, msg) { if (cond) console.log('  ✓ ' + msg); else { fallos++;
   await page.waitForTimeout(200);
   ok((await page.evaluate(() => VDO.DB.tabla('contactos').filter(c => c.prueba).length)) === 0, 'datos de prueba borrados');
 
-  console.log('10. Celular');
+  console.log('10. Embudo (acciones compartidas y cola del día)');
+  await page.evaluate(() => { VDO.DB.restablecer(); VDO.DB.cargarPrueba(); });
+  await page.reload();
+  await page.waitForSelector('#p-hoy:not([hidden]), #p-ajustes:not([hidden]), #p-contactos:not([hidden])');
+  const emb = await page.evaluate(() => {
+    const E = VDO.embudo, DB = VDO.DB, hoy = VDO.util.hoyISO();
+    const cola0 = E.colaDelDia(hoy); const tipos = {}; cola0.forEach(x => { tipos[x.tipo] = (tipos[x.tipo] || 0) + 1; });
+    const c = DB.buscar('contactos', 'c_prueba_03'); // Carla · Breca · atraer
+    const pl = E.plantillaPara(c, 1);
+    E.marcarEnviado(c, { canal: 'whatsapp', plantilla: pl, mensaje: 'hola' });
+    const a = { etapa: c.etapa, toques: c.toques, prox: c.proximoToque, ola: c.ultimaOla, inter: E.ultimaInteraccion(c.id).resultado };
+    E.marcarRespondio(c, 'Sí, me interesa');
+    const b = { etapa: c.etapa, prox: c.proximoToque, inter: E.ultimaInteraccion(c.id).resultado, enCola: E.colaDelDia(hoy).filter(x => x.contacto && x.contacto.id === c.id).map(x => x.tipo) };
+    const v = VDO.ventas.normalizarVenta({ id: 'v_e2e', contactoId: c.id, fecha: hoy, items: [{ productoId: 'gold700', nombre: 'Gold', cantidad: 2, precio: 89.9, linea: 'botellas', botellas: 1 }], estado: 'pagado', codigoOrigen: 'BRECA-RIMAC', segmento: 'breca' });
+    DB.upsert('ventas', v); E.marcarCompro(c, v);
+    const cc = { etapa: c.etapa, cod: c.codigoReferido, inv: c.totalInvertido, total: v.total, b2b: v.derivarB2B, linea: v.linea, botellas: v.botellas };
+    const d = DB.buscar('contactos', 'c_prueba_02'); // Luis · boca
+    E.marcarEnviado(d, { toque: 1 }); E.marcarEnviado(d, { toque: 2 }); E.marcarEnviado(d, { toque: 3 });
+    const dd = { toques: d.toques, cierre: d.cierrePendiente, prox: d.proximoToque };
+    d.proximoToque = VDO.util.sumarDias(hoy, -1); DB.upsert('contactos', d);
+    const n = E.mantenimientoDiario();
+    const res = E.resumenDia(hoy);
+    const g = VDO.ventas.normalizarVenta({ items: [{ productoId: 'signature', nombre: 'Signature', cantidad: 1, precio: 12990, linea: 'experiencia', personasBase: 30 }], estado: 'cotizado' });
+    const b2b = VDO.ventas.normalizarVenta({ items: [{ productoId: 'silver700', nombre: 'Silver', cantidad: 15, precio: 74.9, linea: 'botellas', botellas: 1 }], estado: 'cotizado' });
+    return { tipos, pl: pl && pl.id, a, b, cc, dd, dormido: d.estado, n, res: { env: res.enviados, resp: res.respondieron, comp: res.compraron, venta: res.ventaDia }, g: { linea: g.linea, personas: g.personas, b2b: g.derivarB2B, total: g.total }, b2b: { der: b2b.derivarB2B, botellas: b2b.botellas } };
+  });
+  ok(emb.pl === 'breca_t1' && emb.tipos.inicial >= 1, 'plantilla por segmento y cola con toques iniciales');
+  ok(emb.a.etapa === 'iniciar' && emb.a.toques === 1 && emb.a.prox === await page.evaluate(() => VDO.util.sumarDias(VDO.util.hoyISO(), 2)) && emb.a.ola === hoy && emb.a.inter === 'enviado', 'marcar enviado: Iniciar, toque 1, próximo a +2 días, ola fijada');
+  ok(emb.b.etapa === 'calificar' && emb.b.prox === hoy && emb.b.inter === 'respondio' && emb.b.enCola.indexOf('responder') >= 0, 'respondió: Calificar, hoy en la cola como "responder"');
+  ok(emb.cc.etapa === 'cerrar' && /^CH-\d+/.test(emb.cc.cod) && emb.cc.inv === 179.8 && emb.cc.total === 179.8 && !emb.cc.b2b && emb.cc.linea === 'botellas' && emb.cc.botellas === 2, 'compró: Cerrar, código de referido, total invertido');
+  ok(emb.dd.toques === 3 && emb.dd.cierre === true && emb.dd.prox > hoy, 'tercer toque deja la conversación pendiente de cierre');
+  ok(emb.dormido === 'dormido' && emb.n === 1, 'mantenimiento diario duerme a quien no respondió al tercer toque');
+  ok(emb.res.env >= 4 && emb.res.resp === 1 && emb.res.comp === 1 && emb.res.venta === 179.8, 'resumen del día: ' + JSON.stringify(emb.res));
+  ok(emb.g.linea === 'experiencia' && emb.g.personas === 30 && !emb.g.b2b && emb.g.total === 12990 && emb.b2b.der && emb.b2b.botellas === 15, 'normalizar venta: paquete de grupo es experiencia (no B2B); 15 botellas sí derivan');
+  // formulario de venta desde la UI
+  await page.click('.nav [data-pantalla="contactos"]');
+  await page.waitForSelector('#p-contactos table');
+  await page.evaluate(() => VDO.ui.formVenta(null, { contacto: VDO.DB.buscar('contactos', 'c_prueba_01') }));
+  await page.waitForSelector('#formVenta');
+  await page.selectOption('#formVenta .venta-item [data-item="productoId"]', 'blue710');
+  await page.waitForTimeout(50);
+  await page.fill('#formVenta .venta-item [data-item="cantidad"]', '2');
+  await page.selectOption('#formVenta [name="estado"]', 'pagado');
+  await page.waitForTimeout(50);
+  const totalForm = await page.$eval('#ventaTotal', e => e.textContent);
+  ok(totalForm === 'S/ 799.80', 'formulario de venta calcula el total: ' + totalForm);
+  await page.click('#formVenta button[type="submit"]');
+  await page.waitForTimeout(200);
+  const vForm = await page.evaluate(() => { const c = VDO.DB.buscar('contactos', 'c_prueba_01'); const v = VDO.DB.tabla('ventas').filter(x => x.contactoId === 'c_prueba_01' && x.total === 799.8)[0]; return { etapa: c.etapa, venta: !!v, estado: v && v.estado, cierre: v && v.fechaCierre }; });
+  ok(vForm.venta && vForm.estado === 'pagado' && vForm.cierre === hoy && vForm.etapa === 'cerrar', 'venta guardada desde el formulario mueve el contacto a Cerrar');
+  await page.evaluate(() => { VDO.DB.restablecer(); VDO.DB.cargarPrueba(); });
+
+  console.log('11. Celular');
   const movil = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'es-PE', timezoneId: 'America/Lima' });
   const pm = await movil.newPage();
   pm.on('pageerror', e => errores.push('móvil: ' + e));
