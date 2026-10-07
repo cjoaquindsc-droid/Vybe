@@ -297,8 +297,8 @@ window.VDO_DATOS = (function () {
     maxToques: 3,
     diasBloqueo: 7,            // no escribir a nadie contactado en los últimos 7 días
     diasEntreOlas: 21,         // máximo un mensaje de ola por persona cada tres semanas
-    umbralBotellasB2B: 12,     // más de 12 botellas → derivar a B2B
-    umbralSolesB2B: 1500,      // más de S/ 1,500 → derivar a B2B
+    umbralBotellasB2B: 12,     // más de 12 botellas → derivar a B2B (pedidos de botellas; las experiencias de grupo son B2C)
+    umbralSolesB2B: 1500,      // más de S/ 1,500 en botellas → derivar a B2B
     umbralB2BEstado: 'por_confirmar', // el PDF lo deja como propuesta a confirmar con Renato
     comisionBase: 0.10,
     comisionAlta: 0.15,
@@ -329,11 +329,12 @@ window.VDO_DATOS = (function () {
     { id: 'fivepack', nombre: 'Five Pack Gold (5 × 700 ml)', botellas: 5, precio: 399.90, anaquel: null, estado: 'por_confirmar', fuente: 'Catálogo de setiembre' }
   ];
 
+  // codigo = módulo principal del ERP (maestro del Centro de Mando); los que no coinciden con un módulo quedan por confirmar
   var EXPERIENCIAS = [
-    { id: 'catador', nombre: 'Experto Catador', precio: 150, codigo: '70001139' },
-    { id: 'coctelero', nombre: 'Experto Coctelero', precio: 200, codigo: '70001140' },
-    { id: 'arte_pisco', nombre: 'El Arte del Pisco', precio: 290, codigo: '70001138' },
-    { id: 'arte_cocteleria', nombre: 'El Arte de la Coctelería', precio: 330, codigo: '70001140' },
+    { id: 'catador', nombre: 'Experto Catador', precio: 150, codigo: '', nota: 'Módulo del ERP por confirmar' },
+    { id: 'coctelero', nombre: 'Experto Coctelero', precio: 200, codigo: '', nota: 'Módulo del ERP por confirmar' },
+    { id: 'arte_pisco', nombre: 'El Arte del Pisco', precio: 290, codigo: '', nota: 'Módulo del ERP por confirmar' },
+    { id: 'arte_cocteleria', nombre: 'El Arte de la Coctelería', precio: 330, codigo: '', nota: 'Módulo del ERP por confirmar' },
     { id: 'master', nombre: 'Master of Pisco', precio: 420, codigo: '70001141' }
   ];
 
@@ -585,6 +586,8 @@ window.VDO_DATOS = (function () {
   var CLAVE = 'vdo-crm-v1';
   var VERSION_ESQUEMA = 1;
   var TABLAS = ['contactos', 'interacciones', 'ventas', 'embajadores', 'cuentas', 'calendario', 'plantillas'];
+  // Campos del contacto que una importación nunca debe pisar (los maneja el embudo)
+  var CAMPOS_PROTEGIDOS = { id: 1, createdAt: 1, fila: 1, _campos: 1, prueba: 1, etapa: 1, estado: 1, toques: 1, proximoToque: 1, inicioConversacion: 1, ultimaOla: 1, codigoReferido: 1 };
 
   /* =========================== Utilidades =========================== */
   function $(id) { return document.getElementById(id); }
@@ -592,6 +595,7 @@ window.VDO_DATOS = (function () {
   function qsa(sel, el) { return Array.prototype.slice.call((el || document).querySelectorAll(sel)); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function attr(s) { return esc(s).replace(/\n/g, '&#10;'); }
+  function esObjeto(o) { return o != null && typeof o === 'object' && !Array.isArray(o); }
 
   function hoyISO() {
     try { return new Intl.DateTimeFormat('en-CA', { timeZone: D.EMPRESA.zonaHoraria, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
@@ -606,22 +610,23 @@ window.VDO_DATOS = (function () {
     } catch (e) { return new Date().toISOString().slice(0, 16); }
   }
   function esISO(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')); }
+  function fechaValida(iso) { if (!esISO(iso)) return false; var d = new Date(iso + 'T12:00:00Z'); return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso; }
   function isoDe(txt) {
     var s = String(txt || '').trim();
     if (!s) return '';
-    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-    var m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
-    if (m) { var a = m[3].length === 2 ? '20' + m[3] : m[3]; return a + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); }
-    return '';
+    var r = '';
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) r = s.slice(0, 10);
+    else { var m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/); if (m) { var a = m[3].length === 2 ? '20' + m[3] : m[3]; r = a + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); } }
+    return fechaValida(r) ? r : '';
   }
   function fechaCorta(iso) { if (!esISO(iso)) return iso || ''; return iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4); }
   function fechaHora(isoDT) { if (!isoDT) return ''; return fechaCorta(isoDT.slice(0, 10)) + (isoDT.length > 10 ? ' ' + isoDT.slice(11, 16) : ''); }
   var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
   var MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
-  function fechaLarga(iso) { if (!esISO(iso)) return ''; var d = new Date(iso + 'T12:00:00'); return DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear(); }
+  function fechaLarga(iso) { if (!fechaValida(iso)) return ''; var d = new Date(iso + 'T12:00:00'); return DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear(); }
   function diaSemana(iso) { return new Date(iso + 'T12:00:00').getDay(); }
-  function sumarDias(iso, n) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
-  function diasEntre(a, b) { if (!esISO(a) || !esISO(b)) return null; return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000); }
+  function sumarDias(iso, n) { if (!fechaValida(iso)) return ''; var d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function diasEntre(a, b) { a = isoDe(a); b = isoDe(b); if (!a || !b) return null; return Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 86400000); }
   function mesDe(iso) { return esISO(iso) ? iso.slice(0, 7) : ''; }
   function nombreMes(ym) { if (!ym) return ''; var m = parseInt(ym.slice(5, 7), 10); return MESES[m - 1] + ' ' + ym.slice(0, 4); }
 
@@ -641,37 +646,51 @@ window.VDO_DATOS = (function () {
     else if (t.indexOf(',') > -1) { t = /,\d{1,2}$/.test(t) ? t.replace(',', '.') : t.replace(/,/g, ''); }
     var n = parseFloat(t); return isNaN(n) ? 0 : n;
   }
+  function primerValor(s) { s = String(s || '').trim(); if (s.indexOf(':::') > -1) s = s.split(':::')[0].trim(); return s; }
   function normTelefono(t) {
-    var s = String(t || '').trim(); if (!s) return '';
+    var s = primerValor(t); if (!s) return '';
     var d = s.replace(/\D/g, ''); if (!d) return '';
     if (d.slice(0, 2) === '00') d = d.slice(2);
-    if (d[0] === '0' && (d.length === 9 || d.length === 10) && d.slice(0, 2) !== '05') d = d.slice(1); // prefijo troncal (01) 445 1234
+    if (d[0] === '0' && (d.length === 9 || d.length === 10)) d = d.slice(1); // prefijo troncal: (01) 445 1234, (056) 123456
+    if (d.length < 7) return '';
     if (d.length === 9 && d[0] === '9') return '+51' + d;
     if (d.length === 11 && d.slice(0, 2) === '51') return '+' + d;
     if (d.length === 12 && d.slice(0, 3) === '051') return '+' + d.slice(1);
     if (d.length === 7) return '+511' + d;
-    if (d.length === 8 && d[0] === '1') return '+51' + d;
+    if (d.length === 8) return '+51' + d;
     if (d.length >= 10) return '+' + d;
     return '+51' + d;
   }
   function telefonoDigitos(t) { return normTelefono(t).replace(/\D/g, ''); }
-  function normCorreo(c) { return String(c || '').trim().toLowerCase(); }
+  function normCorreo(c) { var s = primerValor(c).toLowerCase(); return s; }
+  function correoValido(c) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c || ''); }
   function normTexto(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
   function nuevoId(prefijo) { return prefijo + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function clonar(o) { return JSON.parse(JSON.stringify(o)); }
-  function primerNombre(n) { var p = String(n || '').trim().split(/\s+/); return p[0] || ''; }
-  function tituloCaso(s) { return String(s || '').toLowerCase().replace(/(^|\s|-)([a-záéíóúñ])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
+  function primerNombre(n) { var p = String(n || '').trim().split(/\s+/); var x = p[0] || ''; if (!x || /^[+\d@(]/.test(x)) return ''; return x; }
+  function vacio(v) { return v == null || v === '' || (Array.isArray(v) && !v.length); }
+  function completarObjeto(obj, defaults) {
+    Object.keys(defaults).forEach(function (k) {
+      if (obj[k] == null) obj[k] = clonar(defaults[k]);
+      else if (esObjeto(defaults[k]) && esObjeto(obj[k])) completarObjeto(obj[k], defaults[k]);
+    });
+    return obj;
+  }
 
   /* =========================== Almacén =========================== */
   var DB = {
     datos: null,
     _timer: null,
+    _falloGuardado: false,
     cargar: function () {
       var raw = null;
       try { raw = localStorage.getItem(CLAVE); } catch (e) { raw = null; }
+      var parsed = null;
       if (raw) {
-        try { this.datos = JSON.parse(raw); } catch (e) { this.datos = null; }
+        try { parsed = JSON.parse(raw); } catch (e) { parsed = null; }
+        if (!esObjeto(parsed)) { try { localStorage.setItem(CLAVE + '-corrupto-' + Date.now(), raw); } catch (e) { } parsed = null; }
       }
+      this.datos = parsed;
       if (!this.datos) { this.datos = DB.vacio(); this.datos.ui.primeraVez = true; }
       this.migrar();
       return this.datos;
@@ -692,21 +711,33 @@ window.VDO_DATOS = (function () {
     },
     migrar: function () {
       var d = this.datos;
-      TABLAS.forEach(function (t) { if (!Array.isArray(d[t])) d[t] = []; });
-      if (!d.config) d.config = DB.configInicial();
-      var ci = DB.configInicial();
-      Object.keys(ci).forEach(function (k) { if (d.config[k] == null) d.config[k] = ci[k]; });
-      if (!d.ui) d.ui = { pantalla: 'hoy', filtros: {} };
+      TABLAS.forEach(function (t) { if (!Array.isArray(d[t])) d[t] = []; d[t] = d[t].filter(esObjeto); });
+      if (!esObjeto(d.config)) d.config = DB.configInicial();
+      completarObjeto(d.config, DB.configInicial());
+      if (!esObjeto(d.ui)) d.ui = {};
+      if (!esObjeto(d.ui.filtros)) d.ui.filtros = {};
+      if (!d.ui.pantalla) d.ui.pantalla = 'hoy';
       if (!d.plantillas.length) d.plantillas = clonar(D.PLANTILLAS).map(function (p) { p.activa = true; return p; });
-      if (!d.calendario.length) d.calendario = generarCalendario(d.config);
+      if (!d.calendario.length || d.calendario.some(function (x) { return !fechaValida(x.fecha) || !esObjeto(x.cuotas); })) d.calendario = generarCalendario(d.config);
+      d.contactos.forEach(function (c) {
+        if (!c.id) c.id = nuevoId('c'); if (!c.estado) c.estado = 'activo'; if (!c.etapa) c.etapa = 'atraer';
+        if (c.telefono) c.telefono = normTelefono(c.telefono) || c.telefono; if (c.telefono2) c.telefono2 = normTelefono(c.telefono2) || c.telefono2;
+        if (c.correo) c.correo = normCorreo(c.correo);
+      });
       d.version = VERSION_ESQUEMA;
     },
     guardar: function () {
       this.datos.actualizado = ahoraISO();
-      try { localStorage.setItem(CLAVE, JSON.stringify(this.datos)); setEstado('Guardado ' + this.datos.actualizado.slice(11, 16)); return true; }
-      catch (e) { setEstado('No se pudo guardar: ' + (e && e.name === 'QuotaExceededError' ? 'sin espacio en el navegador' : e.message), true); return false; }
+      try {
+        localStorage.setItem(CLAVE, JSON.stringify(this.datos)); setEstado('Guardado ' + this.datos.actualizado.slice(11, 16)); this._falloGuardado = false; return true;
+      } catch (e) {
+        var motivo = (e && (e.name === 'QuotaExceededError' || e.code === 22)) ? 'el navegador no tiene espacio para guardar' : (e && e.message) || 'error desconocido';
+        setEstado('NO GUARDADO: ' + motivo, true);
+        if (!this._falloGuardado) toast('No se pudo guardar en este navegador (' + motivo + '). Descarga un respaldo JSON ahora para no perder los cambios.', 'alerta', 9000);
+        this._falloGuardado = true; return false;
+      }
     },
-    guardarPronto: function () { var self = this; clearTimeout(this._timer); setEstado('Guardando…'); this._timer = setTimeout(function () { self.guardar(); }, 250); },
+    guardarPronto: function () { var self = this; clearTimeout(this._timer); setEstado('Guardando…'); this._timer = setTimeout(function () { self._timer = null; self.guardar(); }, 250); },
     tabla: function (n) { return this.datos[n]; },
     buscar: function (n, id) { var t = this.datos[n]; for (var i = 0; i < t.length; i++) if (t[i].id === id) return t[i]; return null; },
     upsert: function (n, obj) {
@@ -725,28 +756,43 @@ window.VDO_DATOS = (function () {
     },
     importar: function (json, modo) {
       // modo: 'reemplazar' | 'fusionar'
-      if (!json || json.formato !== 'vdo-crm-respaldo' || !json.tablas) throw new Error('El archivo no es un respaldo de este CRM (falta formato vdo-crm-respaldo).');
-      var d = this.datos; var resumen = {};
+      if (!esObjeto(json) || json.formato !== 'vdo-crm-respaldo' || !esObjeto(json.tablas)) throw new Error('El archivo no es un respaldo de este CRM (falta formato vdo-crm-respaldo).');
+      var resumen = {};
       if (modo === 'reemplazar') {
-        var nuevo = DB.vacio();
-        TABLAS.forEach(function (t) { nuevo[t] = Array.isArray(json.tablas[t]) ? json.tablas[t] : []; resumen[t] = nuevo[t].length; });
-        if (json.config) nuevo.config = json.config;
-        if (json.ui) nuevo.ui = json.ui;
-        this.datos = nuevo; this.migrar();
+        var anterior = this.datos;
+        try {
+          var nuevo = DB.vacio();
+          TABLAS.forEach(function (t) { nuevo[t] = Array.isArray(json.tablas[t]) ? json.tablas[t].filter(esObjeto) : []; resumen[t] = nuevo[t].length; });
+          if (esObjeto(json.config)) nuevo.config = json.config;
+          if (esObjeto(json.ui)) nuevo.ui = json.ui;
+          this.datos = nuevo; this.migrar();
+        } catch (e) { this.datos = anterior; throw new Error('El respaldo tiene un formato inesperado y no se aplicó: ' + e.message); }
       } else {
+        var d = this.datos;
+        var entrantesC = Array.isArray(json.tablas.contactos) ? json.tablas.contactos.filter(esObjeto) : [];
+        var rc = fusionarContactos(entrantesC, 'respaldo');
+        resumen.contactos = { nuevos: rc.nuevos, actualizados: rc.duplicadosActualizados };
+        var mapa = rc.mapa; // id entrante → id final (cuando el contacto ya existía con otro id)
+        function remap(id) { return (id && mapa[id]) || id; }
         TABLAS.forEach(function (t) {
-          var entrantes = Array.isArray(json.tablas[t]) ? json.tablas[t] : [];
-          var r = { nuevos: 0, actualizados: 0 };
-          if (t === 'contactos') { var rc = fusionarContactos(entrantes, 'completar'); r.nuevos = rc.nuevos; r.actualizados = rc.actualizados + rc.duplicadosActualizados; }
-          else {
-            var idx = {}; d[t].forEach(function (x, i) { idx[x.id] = i; });
-            entrantes.forEach(function (x) { if (x.id != null && idx[x.id] != null) { d[t][idx[x.id]] = x; r.actualizados++; } else { d[t].push(x); r.nuevos++; } });
-          }
+          if (t === 'contactos') return;
+          var entrantes = Array.isArray(json.tablas[t]) ? json.tablas[t].filter(esObjeto) : [];
+          var r = { nuevos: 0, actualizados: 0, conservados: 0 };
+          var idx = {}; d[t].forEach(function (x, i) { idx[x.id] = i; });
+          entrantes.forEach(function (x) {
+            x = clonar(x);
+            if (x.contactoId) x.contactoId = remap(x.contactoId);
+            if (Array.isArray(x.contactos)) x.contactos = x.contactos.map(remap);
+            if (x.id == null) x.id = nuevoId(t.slice(0, 1));
+            if (idx[x.id] != null) {
+              var local = d[t][idx[x.id]];
+              if (String(x.updatedAt || '') > String(local.updatedAt || '')) { d[t][idx[x.id]] = x; r.actualizados++; } else r.conservados++;
+            } else { idx[x.id] = d[t].length; d[t].push(x); r.nuevos++; }
+          });
           resumen[t] = r;
         });
-        if (json.config) {
-          if (Array.isArray(json.config.skuMaestro) && json.config.skuMaestro.length) d.config.skuMaestro = json.config.skuMaestro;
-        }
+        if (esObjeto(json.config) && Array.isArray(json.config.skuMaestro) && json.config.skuMaestro.length) d.config.skuMaestro = json.config.skuMaestro;
+        this.migrar();
       }
       this.guardar();
       return resumen;
@@ -759,7 +805,7 @@ window.VDO_DATOS = (function () {
     cargarPrueba: function () {
       var d = this.datos; var n = 0;
       Object.keys(D.DATOS_PRUEBA).forEach(function (t) {
-        D.DATOS_PRUEBA[t].forEach(function (x) { if (!DB.buscar(t, x.id)) { var c = clonar(x); c.createdAt = ahoraISO(); c.updatedAt = c.createdAt; d[t].push(c); n++; } });
+        D.DATOS_PRUEBA[t].forEach(function (x) { if (!DB.buscar(t, x.id)) { var c = clonar(x); c.createdAt = ahoraISO(); c.updatedAt = c.createdAt; if (c.telefono) c.telefono = normTelefono(c.telefono) || c.telefono; d[t].push(c); n++; } });
       });
       this.guardar(); return n;
     },
@@ -771,20 +817,21 @@ window.VDO_DATOS = (function () {
     var E = config.empresa.calendario, M = config.metas, olas = config.olas;
     var dias = [];
     var fecha = E.desde;
-    while (fecha <= E.hasta) {
+    while (fecha && fecha <= E.hasta) {
       var dow = diaSemana(fecha);
       if (dow !== 0 && E.diasLibres.indexOf(fecha) < 0) dias.push({ fecha: fecha, dow: dow, mes: mesDe(fecha) });
       fecha = sumarDias(fecha, 1);
     }
-    // pesos por mes
     var sumaPeso = {};
     dias.forEach(function (d) { var p = M.pesoDia[d.dow]; sumaPeso[d.mes] = (sumaPeso[d.mes] || 0) + p; });
-    return dias.map(function (d, i) {
+    return dias.map(function (d) {
       var peso = M.pesoDia[d.dow];
       var ola = olaDe(d.fecha, olas);
       var semana = D.SEMANAS.filter(function (s) { return d.fecha >= s.desde && d.fecha <= s.hasta; })[0];
-      var hitos = config.fechasClave.filter(function (f) { return f.fecha === d.fecha || (f.hasta && d.fecha >= f.fecha && d.fecha <= f.hasta && f.tipo !== 'periodo'); }).map(function (f) { return f.texto; });
-      config.cortes.forEach(function (c) { if (c.fecha === d.fecha && hitos.indexOf(c.nombre) < 0) hitos.push(c.nombre); });
+      var hitos = [];
+      function agregarHito(t) { var n = normTexto(t); if (!hitos.some(function (h) { return normTexto(h).indexOf(n) >= 0 || n.indexOf(normTexto(h)) >= 0; })) hitos.push(t); }
+      config.fechasClave.forEach(function (f) { if (f.fecha === d.fecha || (f.hasta && d.fecha >= f.fecha && d.fecha <= f.hasta && f.tipo !== 'periodo')) agregarHito(f.texto); });
+      config.cortes.forEach(function (c) { if (c.fecha === d.fecha && !hitos.some(function (h) { return /corte/i.test(h); })) agregarHito(c.nombre); });
       var periodos = config.fechasClave.filter(function (f) { return f.hasta && f.tipo === 'periodo' && d.fecha >= f.fecha && d.fecha <= f.hasta; }).map(function (f) { return f.texto; });
       var vol = D.VOLUMEN_OLA[ola] || D.VOLUMEN_OLA[1];
       var factor = d.dow === 6 ? 0.5 : 1;
@@ -800,10 +847,11 @@ window.VDO_DATOS = (function () {
     });
   }
   function olaDe(fecha, olas) {
-    olas = olas || DB.datos.config.olas;
+    olas = olas || DB.datos.config.olas; fecha = String(fecha || '').slice(0, 10);
     for (var i = 0; i < olas.length; i++) if (fecha >= olas[i].desde && fecha <= olas[i].hasta) return olas[i].n;
-    if (fecha < olas[0].desde) return 1;
-    return olas[olas.length - 1].n;
+    var ultima = null; // hueco entre olas (p. ej. sábado 21/11): se queda en la ola anterior
+    for (var j = 0; j < olas.length; j++) if (olas[j].desde <= fecha) ultima = olas[j].n;
+    return ultima == null ? olas[0].n : ultima;
   }
   function diaCalendario(fecha) { return DB.buscar('calendario', fecha); }
 
@@ -815,23 +863,29 @@ window.VDO_DATOS = (function () {
   function cadenciaDe(contacto) { var s = segmentoDe(contacto.segmento); var c = cfg().cadencias; return c[(s && s.cadencia) || 'consumidor'] || c.consumidor; }
   function tratoDe(contacto) { var s = segmentoDe(contacto.segmento); return (s && s.trato) || 'usted'; }
   function proximoToqueTras(contacto, fechaEnvio, toqueEnviado) {
-    var cad = cadenciaDe(contacto);
-    if (toqueEnviado >= cfg().reglas.maxToques) return '';
-    var inicio = contacto.inicioConversacion || fechaEnvio;
+    var cad = cadenciaDe(contacto); fechaEnvio = isoDe(fechaEnvio) || hoyISO();
+    toqueEnviado = Math.max(1, parseInt(toqueEnviado, 10) || 1);
+    if (toqueEnviado >= cfg().reglas.maxToques || cad[toqueEnviado] == null) return '';
+    var inicio = isoDe(contacto.inicioConversacion) || fechaEnvio;
     var objetivo = sumarDias(inicio, cad[toqueEnviado]);
-    if (objetivo <= fechaEnvio) objetivo = sumarDias(fechaEnvio, cad[toqueEnviado] - cad[toqueEnviado - 1]);
+    if (!objetivo || objetivo <= fechaEnvio) objetivo = sumarDias(fechaEnvio, Math.max(1, cad[toqueEnviado] - (cad[toqueEnviado - 1] || 0)));
     return objetivo;
   }
   function puedeIniciarOla(contacto, hoy) {
     var R = cfg().reglas; hoy = hoy || hoyISO();
     if (contacto.estado === 'perdido') return { ok: false, motivo: 'Marcado como perdido' };
     if (contacto.estado === 'b2b') return { ok: false, motivo: 'Derivado a B2B' };
-    if (contacto.ultimoContacto && diasEntre(contacto.ultimoContacto, hoy) < R.diasBloqueo) return { ok: false, motivo: 'Contactado hace menos de ' + R.diasBloqueo + ' días' };
-    if (contacto.ultimaOla && diasEntre(contacto.ultimaOla, hoy) < R.diasEntreOlas) return { ok: false, motivo: 'Ya recibió un mensaje de ola hace menos de 3 semanas' };
+    var dUlt = diasEntre(contacto.ultimoContacto, hoy);
+    if (dUlt != null && dUlt < R.diasBloqueo) return { ok: false, motivo: 'Contactado hace menos de ' + R.diasBloqueo + ' días' };
+    var dOla = diasEntre(contacto.ultimaOla, hoy);
+    if (dOla != null && dOla < R.diasEntreOlas) return { ok: false, motivo: 'Ya recibió un mensaje de ola hace menos de 3 semanas' };
+    var olaHoy = olaDe(hoy), olaUltima = isoDe(contacto.ultimaOla) ? olaDe(contacto.ultimaOla) : null;
+    if ((contacto.estado === 'dormido' || (Number(contacto.toques) || 0) >= R.maxToques) && olaUltima === olaHoy) return { ok: false, motivo: 'Ya agotó sus toques en esta ola; vuelve en la siguiente' };
     if (contacto.segmento === 'recontacto' && !contacto.consentimiento) return { ok: false, motivo: 'Sin consentimiento: no escribió primero' };
     return { ok: true, motivo: '' };
   }
-  function derivarB2B(venta) { var R = cfg().reglas; return (Number(venta.botellas) || 0) > R.umbralBotellasB2B || (Number(venta.total) || 0) > R.umbralSolesB2B; }
+  // Umbral B2C/B2B: aplica a pedidos de botellas (las experiencias de grupo son parte del canal B2C)
+  function derivarB2B(venta) { var R = cfg().reglas; if ((venta.linea || 'botellas') !== 'botellas') return false; return (Number(venta.botellas) || 0) > R.umbralBotellasB2B || (Number(venta.total) || 0) > R.umbralSolesB2B; }
   function ganchosDe(fecha) { fecha = fecha || hoyISO(); return cfg().ganchos.filter(function (g) { return fecha >= g.desde && fecha <= g.hasta; }); }
   function ganchoTexto(fecha) {
     var gs = ganchosDe(fecha); var activos = gs.filter(function (g) { return g.estado === 'activo'; });
@@ -843,11 +897,12 @@ window.VDO_DATOS = (function () {
 
   /* =========================== Mensajes =========================== */
   function variablesDe(contacto, extra) {
-    var c = contacto || {}; var ciudad = c.ciudad || 'su ciudad';
+    var c = contacto || {}; var fecha = (extra && extra.fecha) || hoyISO(); var ciudad = c.ciudad || 'su ciudad';
+    var mes = MESES[parseInt(fecha.slice(5, 7), 10) - 1] || 'este mes';
     var v = {
-      nombre: primerNombre(c.nombre) || 'Hola', nombre_completo: c.nombre || '', empresa: c.empresa || (c.subsegmento || 'su empresa'), ocasion: c.ocasion || 'esta temporada',
+      nombre: primerNombre(c.nombre), nombre_completo: c.nombre || '', empresa: c.empresa || (c.subsegmento || 'su empresa'), ocasion: c.ocasion || 'esta temporada',
       codigo: c.codigoReferido || c.codigoOrigen || 'VDO', ciudad: ciudad, personas: c.personas || 'su grupo', producto: '', total: '', link: '[LINK DE PAGO]',
-      gancho: ganchoTexto((extra && extra.fecha) || hoyISO()) || 'una selección de octubre con precio exclusivo',
+      gancho: ganchoTexto(fecha) || ('una selección de ' + mes + ' con precio exclusivo'),
       precio_silver: f2(precioDe('silver700', 'b2c')), precio_gold: f2(precioDe('gold700', 'b2c')), precio_blue: f2(precioDe('blue710', 'b2c')),
       precio_breca_silver: f2(precioDe('silver700', 'breca')), precio_breca_gold: f2(precioDe('gold700', 'breca')), precio_breca_blue: f2(precioDe('blue710', 'breca')),
       total_10_gold: f2(10 * (precioDe('gold700', 'b2c') || 0)), firma: cfg().empresa.firma
@@ -855,7 +910,11 @@ window.VDO_DATOS = (function () {
     if (extra) Object.keys(extra).forEach(function (k) { if (extra[k] != null && extra[k] !== '') v[k] = extra[k]; });
     return v;
   }
-  function rellenar(texto, vars) { return String(texto || '').replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null ? vars[k] : m; }); }
+  function rellenar(texto, vars) {
+    var t = String(texto || '').replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null ? vars[k] : m; });
+    // sin nombre: "Hola , le saluda" → "Hola, le saluda" · "Buenos días , " → "Buenos días, "
+    return t.replace(/(Hola|Buenos días|Buenas tardes|Estimado\/a|Estimado|Estimada)\s+,/g, '$1,').replace(/^\s*,\s*/, '').replace(/\n\s*,\s*/g, '\n').replace(/[ \t]{2,}/g, ' ');
+  }
   function conLeyendas(texto, plantilla) {
     if (plantilla && plantilla.masivo && cfg().reglas.leyendasEnMasivos) return texto + '\n\n' + cfg().leyendas.join('. ') + '.';
     return texto;
@@ -907,17 +966,18 @@ window.VDO_DATOS = (function () {
     return { cabeceras: cab, filas: filas.slice(1), delim: delim };
   }
   var CAMPOS_IMPORT = [
-    { campo: 'nombre', etiqueta: 'Nombre', pistas: ['nombre completo', 'nombre', 'name', 'first name', 'nombres', 'contacto', 'cliente', 'display name', 'given name'] },
+    { campo: 'nombre', etiqueta: 'Nombre', pistas: ['nombre completo', 'nombre', 'name', 'first name', 'given name', 'nombres', 'contacto', 'cliente', 'display name'] },
     { campo: 'apellido', etiqueta: 'Apellido (se une al nombre)', pistas: ['apellidos', 'apellido', 'last name', 'family name', 'surname'] },
-    { campo: 'telefono', etiqueta: 'Teléfono / WhatsApp', pistas: ['phone 1 - value', 'teléfono', 'telefono', 'celular', 'móvil', 'movil', 'whatsapp', 'phone', 'mobile', 'número', 'numero', 'tel'] },
-    { campo: 'telefono2', etiqueta: 'Teléfono 2', pistas: ['phone 2 - value', 'teléfono 2', 'telefono 2', 'celular 2', 'otro teléfono'] },
-    { campo: 'correo', etiqueta: 'Correo', pistas: ['e-mail 1 - value', 'correo', 'email', 'e-mail', 'mail', 'correo electrónico'] },
+    { campo: 'telefono', etiqueta: 'Teléfono / WhatsApp', pistas: ['phone 1 - value', 'teléfono', 'telefono', 'celular', 'móvil', 'movil', 'whatsapp', 'mobile phone', 'mobile', 'phone', 'número', 'numero', 'tel'] },
+    { campo: 'telefono2', etiqueta: 'Teléfono 2', pistas: ['phone 2 - value', 'teléfono 2', 'telefono 2', 'celular 2', 'otro teléfono', 'home phone', 'business phone'] },
+    { campo: 'correo', etiqueta: 'Correo', pistas: ['e-mail 1 - value', 'correo', 'email', 'e-mail', 'e-mail address', 'mail', 'correo electrónico'] },
     { campo: 'empresa', etiqueta: 'Empresa', pistas: ['organization 1 - name', 'organization name', 'empresa', 'compañía', 'compania', 'company', 'organización', 'organizacion'] },
-    { campo: 'cargo', etiqueta: 'Cargo', pistas: ['organization 1 - title', 'organization title', 'cargo', 'puesto', 'title', 'job title', 'posición'] },
-    { campo: 'ciudad', etiqueta: 'Ciudad', pistas: ['ciudad', 'city', 'distrito', 'address 1 - city', 'sede', 'ubicación'] },
+    { campo: 'cargo', etiqueta: 'Cargo', pistas: ['organization 1 - title', 'organization title', 'job title', 'cargo', 'puesto', 'posición', 'position'] },
+    { campo: 'ciudad', etiqueta: 'Ciudad', pistas: ['ciudad', 'city', 'distrito', 'address 1 - city', 'home city', 'business city', 'sede', 'ubicación'] },
     { campo: 'segmento', etiqueta: 'Segmento (código o nombre)', pistas: ['segmento', 'segment'] },
     { campo: 'subsegmento', etiqueta: 'Subsegmento', pistas: ['subsegmento', 'área', 'area', 'grupo'] },
     { campo: 'perfil', etiqueta: 'Perfil (A/B)', pistas: ['perfil', 'nse', 'nivel'] },
+    { campo: 'consentimiento', etiqueta: 'Consentimiento (Sí/No)', pistas: ['consentimiento', 'escribió primero', 'escribio primero', 'opt-in', 'optin'] },
     { campo: 'ocasion', etiqueta: 'Ocasión', pistas: ['ocasión', 'ocasion', 'motivo', 'interés', 'interes'] },
     { campo: 'notas', etiqueta: 'Notas', pistas: ['notas', 'notes', 'observaciones', 'comentarios', 'historial'] },
     { campo: 'referidoPor', etiqueta: 'Referido por', pistas: ['referido por', 'referido', 'referred by'] },
@@ -926,14 +986,12 @@ window.VDO_DATOS = (function () {
   function adivinarMapeo(cabeceras) {
     var mapeo = {}; var usadas = {};
     var normCab = cabeceras.map(normTexto);
-    // Primera pasada: coincidencia exacta de cabecera (cubre Google Contacts y agendas en español)
     CAMPOS_IMPORT.forEach(function (c) {
       for (var p = 0; p < c.pistas.length; p++) {
         var pista = normTexto(c.pistas[p]);
         for (var i = 0; i < normCab.length; i++) { if (!usadas[i] && normCab[i] === pista) { mapeo[c.campo] = i; usadas[i] = true; return; } }
       }
     });
-    // Segunda pasada: la cabecera empieza por la pista (por ejemplo "Teléfono móvil")
     CAMPOS_IMPORT.forEach(function (c) {
       if (mapeo[c.campo] != null) return;
       for (var p = 0; p < c.pistas.length; p++) {
@@ -951,54 +1009,71 @@ window.VDO_DATOS = (function () {
     if (/recontacto|whatsapp|wa/.test(t)) return 'recontacto'; if (/boca|red|personal|amigo/.test(t)) return 'boca'; if (/piloto|chiclayo|santa cruz|embajador/.test(t)) return 'piloto';
     return '';
   }
+  function siNo(txt) { var t = normTexto(txt); return /^(si|s|yes|y|true|1|x|ok)$/.test(t); }
   function filasAContactos(parsed, mapeo, defectos) {
-    var cab = parsed.cabeceras;
     return parsed.filas.map(function (f, n) {
-      function v(campo) { var i = mapeo[campo]; return (i == null || i === '' || i < 0) ? '' : String(f[i] == null ? '' : f[i]).trim(); }
-      var nombre = v('nombre'); var ap = v('apellido'); if (ap) nombre = (nombre + ' ' + ap).trim();
-      var tel = v('telefono') || v('telefono2');
+      var presentes = [];
+      function v(campo) { var i = mapeo[campo]; if (i == null || i === '' || i < 0) return ''; var val = String(f[i] == null ? '' : f[i]).trim(); if (val) presentes.push(campo); return val; }
+      var nombre = v('nombre'); var ap = v('apellido');
+      if (ap && normTexto(nombre).indexOf(normTexto(ap)) < 0) nombre = (nombre + ' ' + ap).trim();
+      var tel1 = v('telefono'), tel2 = v('telefono2');
+      var telefonos = [];
+      [tel1, tel2].forEach(function (t) { String(t || '').split(':::').forEach(function (x) { var nt = normTelefono(x); if (nt && telefonos.indexOf(nt) < 0) telefonos.push(nt); }); });
+      var correos = String(v('correo') || '').split(':::').map(function (x) { return normCorreo(x); }).filter(correoValido);
+      var perfil = v('perfil').toUpperCase().charAt(0); if (perfil !== 'A' && perfil !== 'B') perfil = '';
+      var cons = v('consentimiento');
       var c = {
-        nombre: nombre, telefono: tel ? normTelefono(tel) : '', telefono2: v('telefono2') && v('telefono') ? normTelefono(v('telefono2')) : '', correo: normCorreo(v('correo')),
+        nombre: nombre, telefono: telefonos[0] || '', telefono2: telefonos[1] || '', correo: correos[0] || '',
         empresa: v('empresa'), cargo: v('cargo'), ciudad: v('ciudad') || defectos.ciudad || '', segmento: segmentoDesdeTexto(v('segmento')) || defectos.segmento,
-        subsegmento: v('subsegmento') || defectos.subsegmento || '', origen: defectos.origen, perfil: (v('perfil').toUpperCase().charAt(0) === 'A' || v('perfil').toUpperCase().charAt(0) === 'B') ? v('perfil').toUpperCase().charAt(0) : (defectos.perfil || ''),
-        consentimiento: !!defectos.consentimiento, ocasion: v('ocasion'), notas: v('notas'), referidoPor: v('referidoPor'), ultimoContacto: isoDe(v('ultimoContacto')),
+        subsegmento: v('subsegmento') || defectos.subsegmento || '', origen: defectos.origen, perfil: perfil || (defectos.perfil || ''),
+        consentimiento: cons ? siNo(cons) : !!defectos.consentimiento, ocasion: v('ocasion'), notas: v('notas'), referidoPor: v('referidoPor'), ultimoContacto: isoDe(v('ultimoContacto')),
         proximoToque: defectos.proximoToque || '', etapa: 'atraer', estado: 'activo', toques: 0, codigoReferido: '', personas: '', fila: n + 2
       };
+      if (telefonos.length) { presentes.push('telefono'); if (telefonos[1]) presentes.push('telefono2'); }
+      if (correos.length) presentes.push('correo');
       if (!c.nombre && c.telefono) c.nombre = c.telefono;
+      c._campos = presentes.filter(function (x, i, a) { return a.indexOf(x) === i && x !== 'apellido'; });
       return c;
     });
   }
   function indiceContactos() {
     var porTel = {}, porCorreo = {};
-    DB.tabla('contactos').forEach(function (c) {
-      var t = telefonoDigitos(c.telefono); if (t) porTel[t] = c;
-      var t2 = telefonoDigitos(c.telefono2); if (t2) porTel[t2] = c;
-      var e = normCorreo(c.correo); if (e) porCorreo[e] = c;
-    });
+    DB.tabla('contactos').forEach(function (c) { indexar(porTel, porCorreo, c); });
     return { porTel: porTel, porCorreo: porCorreo };
   }
+  function indexar(porTel, porCorreo, c) {
+    var t = telefonoDigitos(c.telefono); if (t) porTel[t] = c;
+    var t2 = telefonoDigitos(c.telefono2); if (t2) porTel[t2] = c;
+    var e = normCorreo(c.correo); if (correoValido(e)) porCorreo[e] = c;
+  }
   function fusionarContactos(entrantes, politica) {
-    // politica: 'completar' (rellena vacíos del existente) | 'sobrescribir' | 'omitir'
-    var idx = indiceContactos(); var r = { nuevos: 0, duplicadosActualizados: 0, omitidos: 0, sinDato: 0, actualizados: 0, detalle: [] };
+    // politica: 'completar' (rellena vacíos del existente) | 'sobrescribir' | 'omitir' | 'respaldo' (gana el más reciente por updatedAt)
+    var idx = indiceContactos(); var r = { nuevos: 0, duplicadosActualizados: 0, omitidos: 0, sinDato: 0, actualizados: 0, detalle: [], mapa: {} };
     var ahora = ahoraISO();
     entrantes.forEach(function (c) {
       var t = telefonoDigitos(c.telefono), e = normCorreo(c.correo);
-      var existente = (t && idx.porTel[t]) || (e && idx.porCorreo[e]) || (c.id && DB.buscar('contactos', c.id)) || null;
-      if (!t && !e) r.sinDato++;
+      var existente = (t && idx.porTel[t]) || (correoValido(e) && idx.porCorreo[e]) || (c.id && DB.buscar('contactos', c.id)) || null;
+      if (!t && !correoValido(e)) r.sinDato++;
       if (existente) {
+        if (c.id && c.id !== existente.id) r.mapa[c.id] = existente.id;
         if (politica === 'omitir') { r.omitidos++; r.detalle.push({ tipo: 'omitido', nombre: c.nombre, con: existente.nombre }); return; }
-        Object.keys(c).forEach(function (k) {
-          if (k === 'id' || k === 'fila' || k === 'createdAt') return;
-          var vacio = existente[k] == null || existente[k] === '' || existente[k] === 0 || existente[k] === false;
-          if (politica === 'sobrescribir' ? (c[k] !== '' && c[k] != null) : (vacio && c[k] !== '' && c[k] != null)) existente[k] = c[k];
+        var modo = politica;
+        if (politica === 'respaldo') modo = String(c.updatedAt || '') > String(existente.updatedAt || '') ? 'respaldo-nuevo' : 'completar';
+        var campos = Array.isArray(c._campos) ? c._campos : Object.keys(c);
+        campos.forEach(function (k) {
+          if (modo === 'respaldo-nuevo' ? (k === 'id' || k === 'createdAt' || k === 'fila' || k === '_campos') : CAMPOS_PROTEGIDOS[k]) return;
+          if (c[k] == null || c[k] === '') return;
+          if (modo === 'completar' ? vacio(existente[k]) : true) existente[k] = c[k];
         });
-        if (c.notas && existente.notas && existente.notas.indexOf(c.notas) < 0 && politica === 'completar') existente.notas = existente.notas + '\n' + c.notas;
+        if (modo === 'completar' && c.notas && existente.notas && existente.notas.indexOf(c.notas) < 0 && campos.indexOf('notas') >= 0) existente.notas = existente.notas + '\n' + c.notas;
+        if (existente.prueba && !c.prueba) existente.prueba = false; // una persona real nunca queda marcada como dato de prueba
         existente.updatedAt = ahora; r.duplicadosActualizados++; r.detalle.push({ tipo: 'duplicado', nombre: c.nombre, con: existente.nombre });
+        indexar(idx.porTel, idx.porCorreo, existente);
       } else {
-        var nuevo = clonar(c); delete nuevo.fila; if (!nuevo.id) nuevo.id = nuevoId('c'); nuevo.createdAt = nuevo.createdAt || ahora; nuevo.updatedAt = ahora;
-        if (!nuevo.telefono) nuevo.telefono = ''; if (!nuevo.correo) nuevo.correo = '';
+        var nuevo = clonar(c); delete nuevo.fila; delete nuevo._campos; if (!nuevo.id) nuevo.id = nuevoId('c'); nuevo.createdAt = nuevo.createdAt || ahora; nuevo.updatedAt = ahora;
+        if (!nuevo.telefono) nuevo.telefono = ''; if (!nuevo.correo) nuevo.correo = ''; if (!nuevo.estado) nuevo.estado = 'activo'; if (!nuevo.etapa) nuevo.etapa = 'atraer';
         DB.tabla('contactos').push(nuevo); r.nuevos++;
-        var tt = telefonoDigitos(nuevo.telefono); if (tt) idx.porTel[tt] = nuevo; var ee = normCorreo(nuevo.correo); if (ee) idx.porCorreo[ee] = nuevo;
+        indexar(idx.porTel, idx.porCorreo, nuevo);
       }
     });
     DB.guardarPronto();
@@ -1025,7 +1100,7 @@ window.VDO_DATOS = (function () {
   /* =========================== UI base =========================== */
   function setEstado(txt, error) { var el = $('estadoGuardado'); if (!el) return; el.textContent = txt; el.classList.toggle('error', !!error); }
   var toastTimer = null;
-  function toast(msg, tipo) { var t = $('toast'); t.textContent = msg; t.className = 'toast' + (tipo ? ' ' + tipo : ''); t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 3200); }
+  function toast(msg, tipo, ms) { var t = $('toast'); t.textContent = msg; t.className = 'toast' + (tipo ? ' ' + tipo : ''); t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, ms || 3200); }
   function abrirModal(html, opciones) {
     var m = $('modal'); $('modalContenido').innerHTML = html; m.hidden = false; m.className = 'modal' + (opciones && opciones.ancho ? ' ' + opciones.ancho : ''); document.body.classList.add('con-modal');
     var foco = qs('input,select,textarea,button', $('modalContenido')); if (foco && !(opciones && opciones.sinFoco)) setTimeout(function () { foco.focus(); }, 30);
@@ -1036,13 +1111,13 @@ window.VDO_DATOS = (function () {
     qs('[data-accion="ok"]', $('modalContenido')).onclick = function () { cerrarModal(); onOk(); };
     qs('[data-accion="cancelar"]', $('modalContenido')).onclick = cerrarModal;
   }
-  function opciones(lista, valor, vacio) {
-    var h = vacio != null ? '<option value="">' + esc(vacio) + '</option>' : '';
+  function opciones(lista, valor, vacioTxt) {
+    var h = vacioTxt != null ? '<option value="">' + esc(vacioTxt) + '</option>' : '';
     lista.forEach(function (o) { var v = typeof o === 'string' ? o : o.valor, t = typeof o === 'string' ? o : o.texto; h += '<option value="' + attr(v) + '"' + (String(v) === String(valor == null ? '' : valor) ? ' selected' : '') + '>' + esc(t) + '</option>'; });
     return h;
   }
-  function opcionesSegmentos(valor, vacio) { return opciones(cfg().segmentos.map(function (s) { return { valor: s.codigo, texto: s.num + ' · ' + s.nombre }; }), valor, vacio); }
-  function opcionesEtapas(valor, vacio) { return opciones(cfg().etapas.map(function (e) { return { valor: e.codigo, texto: e.nombre }; }), valor, vacio); }
+  function opcionesSegmentos(valor, vacioTxt) { return opciones(cfg().segmentos.map(function (s) { return { valor: s.codigo, texto: s.num + ' · ' + s.nombre }; }), valor, vacioTxt); }
+  function opcionesEtapas(valor, vacioTxt) { return opciones(cfg().etapas.map(function (e) { return { valor: e.codigo, texto: e.nombre }; }), valor, vacioTxt); }
   function campo(etiqueta, inputHtml, ayuda) { return '<label class="campo"><span>' + esc(etiqueta) + '</span>' + inputHtml + (ayuda ? '<small>' + esc(ayuda) + '</small>' : '') + '</label>'; }
   function inp(nombre, valor, extra) { return '<input name="' + attr(nombre) + '" value="' + attr(valor == null ? '' : valor) + '" ' + (extra || '') + '>'; }
   function leerForm(form) { var o = {}; qsa('[name]', form).forEach(function (el) { if (el.type === 'checkbox') o[el.name] = el.checked; else o[el.name] = el.value; }); return o; }
@@ -1051,7 +1126,7 @@ window.VDO_DATOS = (function () {
   var PANTALLAS = {
     hoy: { titulo: 'Hoy', render: renderHoy },
     calendario: { titulo: 'Calendario', render: renderCalendario },
-    contactos: { titulo: 'Contactos', render: renderContactos },
+    contactos: { titulo: 'Contactos', render: function () { renderContactos(false); } },
     pipeline: { titulo: 'Pipeline', render: renderPipeline },
     ventas: { titulo: 'Ventas', render: renderVentas },
     metricas: { titulo: 'Métricas', render: renderMetricas },
@@ -1061,13 +1136,17 @@ window.VDO_DATOS = (function () {
   };
   function navegar(nombre, sub) {
     if (!PANTALLAS[nombre]) nombre = 'hoy';
-    DB.datos.ui.pantalla = nombre; if (sub) DB.datos.ui.sub = sub; DB.guardarPronto();
+    if (DB.datos.ui.pantalla !== nombre || (sub && DB.datos.ui.sub !== sub)) { DB.datos.ui.pantalla = nombre; if (sub) DB.datos.ui.sub = sub; DB.guardarPronto(); }
     qsa('.pantalla').forEach(function (s) { s.hidden = s.id !== 'p-' + nombre; });
     qsa('[data-pantalla]').forEach(function (b) { b.classList.toggle('activa', b.getAttribute('data-pantalla') === nombre); });
-    PANTALLAS[nombre].render();
+    renderSeguro(nombre);
     window.scrollTo(0, 0);
   }
-  function refrescar() { var p = DB.datos.ui.pantalla || 'hoy'; if (PANTALLAS[p]) PANTALLAS[p].render(); }
+  function renderSeguro(nombre) {
+    try { PANTALLAS[nombre].render(); }
+    catch (e) { $('p-' + nombre).innerHTML = '<div class="tarjeta borde-alerta"><h3>Esta pantalla no se pudo dibujar</h3><p>' + esc(e.message) + '</p><p class="texto2">Descarga un respaldo desde Ajustes → Datos y respaldo y, si persiste, restablece el CRM.</p><div class="acciones"><button class="btn" data-ir="ajustes" data-sub="datos">Ir a Ajustes</button></div></div>'; console.error(e); }
+  }
+  function refrescar() { var p = DB.datos.ui.pantalla || 'hoy'; if (PANTALLAS[p]) renderSeguro(p); }
 
   /* =========================== HOY (base; se completa en la parte 2) =========================== */
   function renderHoy() {
@@ -1078,24 +1157,24 @@ window.VDO_DATOS = (function () {
     var totalHoy = ventasHoy.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
     var html = '<div class="cabecera-pantalla"><h2>Hoy</h2><p class="sub">' + esc(fechaLarga(hoy)) + ' · hora de Lima</p></div>';
     if (dia) {
-      html += '<div class="tarjeta oro"><div class="fila-sup"><span class="etiqueta">Ola ' + dia.ola + '</span>' + (dia.esCorte ? '<span class="pill alerta">Corte de control</span>' : '') + '</div>' +
+      html += '<div class="tarjeta oro"><div class="fila-sup"><span class="etiqueta">Ola ' + esc(dia.ola) + '</span>' + (dia.esCorte ? '<span class="pill alerta">Corte de control</span>' : '') + '</div>' +
         '<h3>Foco del día</h3><p>' + esc(dia.foco || '—') + '</p>' + (dia.hito ? '<p><b>Hito:</b> ' + esc(dia.hito) + '</p>' : '') + (dia.periodo ? '<p class="texto2">' + esc(dia.periodo) + '</p>' : '') +
         '<div class="kpis"><div class="kpi"><span class="lab">Meta del día (proyección)</span><span class="val">' + soles(dia.metaDia) + '</span></div><div class="kpi"><span class="lab">Cuota oficial del día</span><span class="val">' + soles(dia.cuotaDia) + '</span></div><div class="kpi"><span class="lab">Venta de hoy</span><span class="val">' + soles(totalHoy) + '</span></div></div>' +
-        '<div class="cuotas">' + Object.keys(dia.cuotas).filter(function (k) { return dia.cuotas[k] > 0; }).map(function (k) { return '<span class="chip"><b>' + dia.cuotas[k] + '</b> ' + esc(nombreSegmento(k)) + '</span>'; }).join('') + '</div></div>';
+        '<div class="cuotas">' + Object.keys(dia.cuotas).filter(function (k) { return dia.cuotas[k] > 0; }).map(function (k) { return '<span class="chip"><b>' + esc(dia.cuotas[k]) + '</b> ' + esc(nombreSegmento(k)) + '</span>'; }).join('') + '</div></div>';
     } else {
       html += '<div class="tarjeta"><p>Hoy no es un día de atención del calendario (domingo, 25/12 o fuera del 07/10 al 31/12).</p></div>';
     }
     html += '<div class="grid-2"><div class="tarjeta"><h3>Seguimientos</h3><div class="kpis"><div class="kpi"><span class="lab">Para hoy</span><span class="val">' + paraHoy + '</span></div><div class="kpi' + (vencidos ? ' mal' : '') + '"><span class="lab">Vencidos</span><span class="val">' + vencidos + '</span></div><div class="kpi"><span class="lab">Contactos</span><span class="val">' + entero(cont.length) + '</span></div></div>' +
-      '<p class="texto2">La cola del día con mensajes armados, botones de copiar y abrir WhatsApp, y el registro de enviado / respondió / compró llegan en la parte 2.</p><div class="acciones"><button class="btn" data-ir="contactos" data-filtro="vencidos">Ver vencidos</button><button class="btn" data-ir="ajustes">Importar contactos</button></div></div>' +
+      '<p class="texto2">La cola del día con mensajes armados, botones de copiar y abrir WhatsApp, y el registro de enviado / respondió / compró llegan en la parte 2.</p><div class="acciones"><button class="btn" data-ir="contactos" data-filtro="vencidos">Ver vencidos</button><button class="btn" data-ir="ajustes" data-sub="datos">Importar contactos</button></div></div>' +
       '<div class="tarjeta"><h3>Estado de la base</h3>' + resumenBase() + '</div></div>';
     $('p-hoy').innerHTML = html;
   }
   function resumenBase() {
     var d = DB.datos; var porSeg = {};
-    d.contactos.forEach(function (c) { porSeg[c.segmento] = (porSeg[c.segmento] || 0) + 1; });
+    d.contactos.forEach(function (c) { porSeg[c.segmento || ''] = (porSeg[c.segmento || ''] || 0) + 1; });
     var h = '<table class="tabla compacta"><tbody>';
     cfg().segmentos.forEach(function (s) { h += '<tr><td>' + esc(s.num + ' · ' + s.nombre) + '</td><td class="num">' + entero(porSeg[s.codigo] || 0) + '</td></tr>'; });
-    h += '<tr><td>Sin segmento</td><td class="num">' + entero(porSeg[''] || porSeg['undefined'] || 0) + '</td></tr>';
+    h += '<tr><td>Sin segmento</td><td class="num">' + entero(porSeg[''] || 0) + '</td></tr>';
     h += '<tr class="total"><td>Total contactos</td><td class="num">' + entero(d.contactos.length) + '</td></tr>';
     h += '<tr><td>Ventas registradas</td><td class="num">' + entero(d.ventas.length) + '</td></tr><tr><td>Cuentas / eventos</td><td class="num">' + entero(d.cuentas.length) + '</td></tr><tr><td>Embajadores</td><td class="num">' + entero(d.embajadores.length) + '</td></tr><tr><td>Plantillas</td><td class="num">' + entero(d.plantillas.length) + '</td></tr></tbody></table>';
     return h;
@@ -1108,7 +1187,7 @@ window.VDO_DATOS = (function () {
     var html = '<div class="cabecera-pantalla"><h2>Calendario</h2><p class="sub">Del 07/10 al 31/12 · lunes a sábado, sin el 25/12 · ' + cal.length + ' días de atención. Vista completa y edición en la parte 2.</p></div>';
     html += '<div class="tarjeta"><div class="tabla-scroll"><table class="tabla"><thead><tr><th>Fecha</th><th>Ola</th><th>Foco</th><th>Hito</th><th class="num">Meta del día</th><th class="num">Cuota oficial</th><th>Estado</th></tr></thead><tbody>';
     cal.slice(0, 400).forEach(function (d) {
-      html += '<tr' + (d.fecha === hoy ? ' class="hoy"' : '') + '><td data-label="Fecha">' + esc(fechaCorta(d.fecha)) + '<br><small>' + DIAS[d.dow] + '</small></td><td data-label="Ola">' + d.ola + '</td><td data-label="Foco" class="celda-larga">' + esc(d.foco) + '</td><td data-label="Hito">' + esc(d.hito || '') + '</td><td data-label="Meta" class="num">' + soles(d.metaDia) + '</td><td data-label="Cuota" class="num">' + soles(d.cuotaDia) + '</td><td data-label="Estado"><span class="pill">' + esc(d.estado) + '</span></td></tr>';
+      html += '<tr' + (d.fecha === hoy ? ' class="hoy"' : '') + '><td data-label="Fecha">' + esc(fechaCorta(d.fecha)) + '<br><small>' + DIAS[d.dow] + '</small></td><td data-label="Ola">' + esc(d.ola) + '</td><td data-label="Foco" class="celda-larga">' + esc(d.foco) + '</td><td data-label="Hito">' + esc(d.hito || '') + '</td><td data-label="Meta" class="num">' + soles(d.metaDia) + '</td><td data-label="Cuota" class="num">' + soles(d.cuotaDia) + '</td><td data-label="Estado"><span class="pill">' + esc(d.estado) + '</span></td></tr>';
     });
     html += '</tbody></table></div></div>';
     $('p-calendario').innerHTML = html;
@@ -1125,9 +1204,9 @@ window.VDO_DATOS = (function () {
   function renderReporte() { placeholder('p-reporte', 'Reporte semanal', 5, 'Resumen para el comité de los viernes, copiable como texto y correo.'); }
 
   /* =========================== CONTACTOS =========================== */
-  function filtrosContactos() { var f = DB.datos.ui.filtros.contactos; if (!f) { f = { texto: '', segmento: '', etapa: '', ciudad: '', perfil: '', toque: '', origen: '', estado: 'activo' }; DB.datos.ui.filtros.contactos = f; } return f; }
+  function filtrosContactos() { var f = DB.datos.ui.filtros.contactos; if (!esObjeto(f)) { f = { texto: '', segmento: '', etapa: '', ciudad: '', perfil: '', toque: '', origen: '', estado: 'activo' }; DB.datos.ui.filtros.contactos = f; } return f; }
   function contactosFiltrados() {
-    var f = filtrosContactos(); var hoy = hoyISO(); var t = normTexto(f.texto); var dig = f.texto.replace(/\D/g, '');
+    var f = filtrosContactos(); var hoy = hoyISO(); var t = normTexto(f.texto); var dig = String(f.texto || '').replace(/\D/g, '');
     return DB.tabla('contactos').filter(function (c) {
       if (f.estado && (c.estado || 'activo') !== f.estado) return false;
       if (f.segmento && c.segmento !== f.segmento) return false;
@@ -1143,38 +1222,43 @@ window.VDO_DATOS = (function () {
       return true;
     }).sort(function (a, b) { var pa = a.proximoToque || '9999', pb = b.proximoToque || '9999'; return pa < pb ? -1 : pa > pb ? 1 : String(a.nombre).localeCompare(String(b.nombre)); });
   }
-  function valoresUnicos(campo) { var m = {}; DB.tabla('contactos').forEach(function (c) { var v = String(c[campo] || '').trim(); if (v) m[v] = true; }); return Object.keys(m).sort(); }
-  function renderContactos() {
-    var f = filtrosContactos(); var lista = contactosFiltrados(); var hoy = hoyISO();
-    var html = '<div class="cabecera-pantalla"><h2>Contactos</h2><p class="sub">' + entero(lista.length) + ' de ' + entero(DB.tabla('contactos').length) + '</p><div class="acciones"><button class="btn primario" data-accion="nuevo-contacto">Nuevo contacto</button><button class="btn" data-ir="ajustes" data-sub="datos">Importar CSV</button><button class="btn" data-accion="exportar-contactos">Exportar CSV</button></div></div>';
-    html += '<div class="tarjeta filtros"><input type="search" name="texto" placeholder="Buscar nombre, empresa, teléfono, correo o nota" value="' + attr(f.texto) + '">' +
-      '<select name="segmento">' + opcionesSegmentos(f.segmento, 'Todos los segmentos') + '</select>' +
-      '<select name="etapa">' + opcionesEtapas(f.etapa, 'Todas las etapas') + '</select>' +
-      '<select name="ciudad">' + opciones(valoresUnicos('ciudad'), f.ciudad, 'Todas las ciudades') + '</select>' +
-      '<select name="perfil">' + opciones([{ valor: 'A', texto: 'Perfil A · alto poder adquisitivo' }, { valor: 'B', texto: 'Perfil B · pyme' }], f.perfil, 'Todos los perfiles') + '</select>' +
-      '<select name="toque">' + opciones([{ valor: 'hoy', texto: 'Toque hoy' }, { valor: 'vencidos', texto: 'Toques vencidos' }, { valor: 'semana', texto: 'Próximos 7 días' }, { valor: 'sin', texto: 'Sin próximo toque' }], f.toque, 'Próximo toque: todos') + '</select>' +
-      '<select name="origen">' + opciones(valoresUnicos('origen'), f.origen, 'Todos los orígenes') + '</select>' +
-      '<select name="estado">' + opciones([{ valor: 'activo', texto: 'Activos' }, { valor: 'dormido', texto: 'Dormidos' }, { valor: 'perdido', texto: 'Perdidos' }, { valor: 'b2b', texto: 'Derivados a B2B' }], f.estado, 'Todos los estados') + '</select>' +
-      '<button class="btn chico" data-accion="limpiar-filtros">Limpiar</button></div>';
-    html += '<div class="tarjeta sin-padding"><div class="tabla-scroll"><table class="tabla contactos"><thead><tr><th>Contacto</th><th>Segmento</th><th>Etapa</th><th>Próximo toque</th><th>Último contacto</th><th>Perfil</th><th>Ciudad</th><th></th></tr></thead><tbody>';
+  function valoresUnicos(campoNombre) { var m = {}; DB.tabla('contactos').forEach(function (c) { var v = String(c[campoNombre] || '').trim(); if (v) m[v] = true; }); return Object.keys(m).sort(); }
+  function renderContactos(soloTabla) {
+    var raiz = $('p-contactos'); var f = filtrosContactos();
+    if (!soloTabla || !qs('.filtros', raiz)) {
+      raiz.innerHTML = '<div class="cabecera-pantalla"><h2>Contactos</h2><p class="sub" id="contactosConteo"></p><div class="acciones"><button class="btn primario" data-accion="nuevo-contacto">Nuevo contacto</button><button class="btn" data-ir="ajustes" data-sub="datos">Importar CSV</button><button class="btn" data-accion="exportar-contactos">Exportar CSV</button></div></div>' +
+        '<div class="tarjeta filtros"><input type="search" name="texto" placeholder="Buscar nombre, empresa, teléfono, correo o nota" value="' + attr(f.texto) + '">' +
+        '<select name="segmento">' + opcionesSegmentos(f.segmento, 'Todos los segmentos') + '</select>' +
+        '<select name="etapa">' + opcionesEtapas(f.etapa, 'Todas las etapas') + '</select>' +
+        '<select name="ciudad">' + opciones(valoresUnicos('ciudad'), f.ciudad, 'Todas las ciudades') + '</select>' +
+        '<select name="perfil">' + opciones([{ valor: 'A', texto: 'Perfil A · alto poder adquisitivo' }, { valor: 'B', texto: 'Perfil B · pyme' }], f.perfil, 'Todos los perfiles') + '</select>' +
+        '<select name="toque">' + opciones([{ valor: 'hoy', texto: 'Toque hoy' }, { valor: 'vencidos', texto: 'Toques vencidos' }, { valor: 'semana', texto: 'Próximos 7 días' }, { valor: 'sin', texto: 'Sin próximo toque' }], f.toque, 'Próximo toque: todos') + '</select>' +
+        '<select name="origen">' + opciones(valoresUnicos('origen'), f.origen, 'Todos los orígenes') + '</select>' +
+        '<select name="estado">' + opciones([{ valor: 'activo', texto: 'Activos' }, { valor: 'dormido', texto: 'Dormidos' }, { valor: 'perdido', texto: 'Perdidos' }, { valor: 'b2b', texto: 'Derivados a B2B' }], f.estado, 'Todos los estados') + '</select>' +
+        '<button class="btn chico" data-accion="limpiar-filtros">Limpiar</button></div>' +
+        '<div class="tarjeta sin-padding"><div class="tabla-scroll"><table class="tabla contactos"><thead><tr><th>Contacto</th><th>Segmento</th><th>Etapa</th><th>Próximo toque</th><th>Último contacto</th><th>Perfil</th><th>Ciudad</th><th></th></tr></thead><tbody id="contactosCuerpo"></tbody></table></div><p class="texto2 pad" id="contactosNota" hidden></p></div>';
+    }
+    var lista = contactosFiltrados(); var hoy = hoyISO();
+    $('contactosConteo').textContent = entero(lista.length) + ' de ' + entero(DB.tabla('contactos').length);
+    var html = '';
     if (!lista.length) html += '<tr><td colspan="8" class="vacio">Sin contactos con estos filtros. Importa tu agenda desde Ajustes → Datos o crea uno nuevo.</td></tr>';
     lista.slice(0, 500).forEach(function (c) {
       var venc = c.proximoToque && c.proximoToque < hoy, esHoy = c.proximoToque === hoy;
       html += '<tr data-id="' + attr(c.id) + '"><td data-label="Contacto"><b>' + esc(c.nombre || '(sin nombre)') + '</b>' + (c.prueba ? ' <span class="pill chica">prueba</span>' : '') + '<br><small>' + esc(c.telefono || '') + (c.correo ? ' · ' + esc(c.correo) : '') + (c.empresa ? ' · ' + esc(c.empresa) : '') + '</small></td>' +
         '<td data-label="Segmento"><span class="chip seg-' + esc(c.segmento) + '">' + esc(nombreSegmento(c.segmento)) + '</span>' + (c.subsegmento ? '<br><small>' + esc(c.subsegmento) + '</small>' : '') + '</td>' +
         '<td data-label="Etapa">' + esc(nombreEtapa(c.etapa)) + ((c.estado || 'activo') !== 'activo' ? '<br><small class="texto3">' + esc(c.estado) + '</small>' : '') + '</td>' +
-        '<td data-label="Próximo toque" class="' + (venc ? 'mal' : esHoy ? 'bien' : '') + '">' + esc(fechaCorta(c.proximoToque) || '—') + (c.toques ? '<br><small>toque ' + c.toques + ' de 3</small>' : '') + '</td>' +
+        '<td data-label="Próximo toque" class="' + (venc ? 'mal' : esHoy ? 'bien' : '') + '">' + esc(fechaCorta(c.proximoToque) || '—') + (c.toques ? '<br><small>toque ' + esc(c.toques) + ' de 3</small>' : '') + '</td>' +
         '<td data-label="Último contacto">' + esc(fechaCorta(c.ultimoContacto) || '—') + '</td><td data-label="Perfil">' + esc(c.perfil || '—') + '</td><td data-label="Ciudad">' + esc(c.ciudad || '—') + '</td>' +
         '<td class="acciones-fila">' + (c.telefono ? '<a class="btn chico" target="_blank" rel="noopener" href="' + attr(urlWhatsApp(c.telefono)) + '">WhatsApp</a>' : '') + '<button class="btn chico" data-accion="editar-contacto" data-id="' + attr(c.id) + '">Editar</button></td></tr>';
     });
-    html += '</tbody></table></div>' + (lista.length > 500 ? '<p class="texto2 pad">Se muestran los primeros 500. Afina los filtros para ver el resto.</p>' : '') + '</div>';
-    $('p-contactos').innerHTML = html;
+    $('contactosCuerpo').innerHTML = html;
+    var nota = $('contactosNota'); nota.hidden = lista.length <= 500; nota.textContent = 'Se muestran los primeros 500. Afina los filtros para ver el resto.';
   }
   function formContacto(c) {
     c = c || { segmento: 'recontacto', etapa: 'atraer', estado: 'activo', consentimiento: false, perfil: '', toques: 0 };
     var s = segmentoDe(c.segmento); var subs = (s && s.subsegmentos) || (s && s.empresas) || [];
     var h = '<h3>' + (c.id ? 'Editar contacto' : 'Nuevo contacto') + '</h3><form id="formContacto" class="form-grid">' +
-      campo('Nombre', inp('nombre', c.nombre, 'required')) + campo('Teléfono (WhatsApp)', inp('telefono', c.telefono, 'placeholder="+51 9xx xxx xxx"')) + campo('Correo', inp('correo', c.correo, 'type="email"')) +
+      campo('Nombre', inp('nombre', c.nombre, 'required')) + campo('Teléfono (WhatsApp)', inp('telefono', c.telefono, 'inputmode="tel" placeholder="+51 9xx xxx xxx"')) + campo('Correo', inp('correo', c.correo, 'inputmode="email"')) +
       campo('Empresa', inp('empresa', c.empresa)) + campo('Cargo', inp('cargo', c.cargo)) + campo('Ciudad', inp('ciudad', c.ciudad || 'Lima')) +
       campo('Segmento', '<select name="segmento">' + opcionesSegmentos(c.segmento) + '</select>') + campo('Subsegmento', inp('subsegmento', c.subsegmento, 'list="listaSub"') + '<datalist id="listaSub">' + subs.map(function (x) { return '<option value="' + attr(x) + '">'; }).join('') + '</datalist>') +
       campo('Origen', inp('origen', c.origen, 'placeholder="Agenda, WhatsApp Business, Breca, LinkedIn…"')) +
@@ -1192,18 +1276,19 @@ window.VDO_DATOS = (function () {
     var form = $('formContacto');
     form.onsubmit = function (ev) {
       ev.preventDefault(); var v = leerForm(form);
-      var obj = c.id ? DB.buscar('contactos', c.id) : {}; if (!obj) obj = {};
+      var original = c.id ? DB.buscar('contactos', c.id) : null;
+      var obj = original ? clonar(original) : {}; // se trabaja sobre una copia: nada cambia hasta pasar la validación
       Object.keys(v).forEach(function (k) { obj[k] = v[k]; });
-      obj.consentimiento = v.consentimiento === 'true'; obj.toques = parseInt(v.toques, 10) || 0; obj.telefono = normTelefono(v.telefono); obj.correo = normCorreo(v.correo); obj.personas = v.personas === '' ? '' : Number(v.personas);
-      if (!obj.id) { obj.estado = obj.estado || 'activo'; }
-      // duplicado por teléfono o correo
-      var dup = DB.tabla('contactos').filter(function (x) { return x.id !== obj.id && ((obj.telefono && telefonoDigitos(x.telefono) === telefonoDigitos(obj.telefono)) || (obj.correo && normCorreo(x.correo) === obj.correo)); })[0];
-      if (dup && !c.id) { toast('Ya existe un contacto con ese teléfono o correo: ' + dup.nombre, 'alerta'); return; }
+      obj.consentimiento = v.consentimiento === 'true'; obj.toques = Math.max(0, Math.min(3, parseInt(v.toques, 10) || 0)); obj.telefono = normTelefono(v.telefono); obj.correo = normCorreo(v.correo); obj.personas = v.personas === '' ? '' : Number(v.personas);
+      obj.ultimoContacto = isoDe(v.ultimoContacto); obj.proximoToque = isoDe(v.proximoToque);
+      if (!obj.estado) obj.estado = 'activo';
+      var dup = DB.tabla('contactos').filter(function (x) { return x.id !== obj.id && ((obj.telefono && telefonoDigitos(x.telefono) === telefonoDigitos(obj.telefono)) || (correoValido(obj.correo) && normCorreo(x.correo) === obj.correo)); })[0];
+      if (dup) { toast('Ya existe otro contacto con ese teléfono o correo: ' + dup.nombre, 'alerta'); return; }
       DB.upsert('contactos', obj); cerrarModal(); toast('Contacto guardado'); refrescar();
     };
     qs('[data-accion="cerrar"]', form).onclick = cerrarModal;
     var btnEl = qs('[data-accion="eliminar-contacto"]', form);
-    if (btnEl) btnEl.onclick = function () { confirmar('¿Eliminar a ' + (c.nombre || 'este contacto') + '? Sus interacciones y ventas quedan, pero sin contacto asociado.', function () { DB.eliminar('contactos', c.id); toast('Contacto eliminado'); refrescar(); }, 'Eliminar'); };
+    if (btnEl) btnEl.onclick = function () { if (window.confirm('¿Eliminar a ' + (c.nombre || 'este contacto') + '? Sus interacciones y ventas quedan, pero sin contacto asociado.')) { DB.eliminar('contactos', c.id); cerrarModal(); toast('Contacto eliminado'); refrescar(); } };
     qs('[name="segmento"]', form).onchange = function () { var s2 = segmentoDe(this.value); var dl = $('listaSub'); dl.innerHTML = ((s2 && (s2.subsegmentos || s2.empresas)) || []).map(function (x) { return '<option value="' + attr(x) + '">'; }).join(''); };
   }
 
@@ -1213,7 +1298,7 @@ window.VDO_DATOS = (function () {
     var html = '<div class="cabecera-pantalla"><h2>Ajustes</h2><nav class="subnav">' + ['datos|Datos y respaldo', 'precios|Precios y ganchos', 'metas|Metas y tasas', 'reglas|Reglas y segmentos'].map(function (x) { var p = x.split('|'); return '<button class="btn chico' + (sub === p[0] ? ' activa' : '') + '" data-sub="' + p[0] + '">' + p[1] + '</button>'; }).join('') + '</nav></div>';
     if (sub === 'datos') html += ajustesDatos(); else if (sub === 'precios') html += ajustesPrecios(); else if (sub === 'metas') html += ajustesMetas(); else html += ajustesReglas();
     $('p-ajustes').innerHTML = html;
-    qsa('[data-sub]', $('p-ajustes')).forEach(function (b) { b.onclick = function () { DB.datos.ui.sub = b.getAttribute('data-sub'); renderAjustes(); }; });
+    qsa('.subnav [data-sub]', $('p-ajustes')).forEach(function (b) { b.onclick = function () { DB.datos.ui.sub = b.getAttribute('data-sub'); DB.guardarPronto(); renderAjustes(); }; });
     enlazarAjustes(sub);
   }
   function ajustesDatos() {
@@ -1243,7 +1328,7 @@ window.VDO_DATOS = (function () {
     c.paquetesGrupo.forEach(function (p, i) { h += '<tr><td data-label="Paquete">' + esc(p.nombre) + '</td><td data-label="Precio" class="num"><input data-tabla="paquetesGrupo" data-i="' + i + '" data-campo="precio30" type="number" step="1" value="' + attr(p.precio30) + '"></td><td data-label="Por persona" class="num">' + soles(p.precio30 / p.personasBase) + '</td><td data-label="Estado"><select data-tabla="paquetesGrupo" data-i="' + i + '" data-campo="estado">' + opciones([{ valor: 'vigente', texto: 'Vigente' }, { valor: 'por_confirmar', texto: 'Por confirmar' }], p.estado) + '</select></td></tr>'; });
     h += '</tbody></table></div></div>';
     h += '<div class="tarjeta"><h3>Ganchos por ola (sin bajar precio)</h3><div class="tabla-scroll"><table class="tabla edit"><thead><tr><th>Ola</th><th>Gancho</th><th>Vigencia</th><th>Condición</th><th>Estado</th></tr></thead><tbody>';
-    c.ganchos.forEach(function (g, i) { h += '<tr><td data-label="Ola">' + g.ola + '</td><td data-label="Gancho"><b>' + esc(g.nombre) + '</b><br><textarea data-tabla="ganchos" data-i="' + i + '" data-campo="texto" rows="2">' + esc(g.texto) + '</textarea></td><td data-label="Vigencia">' + esc(fechaCorta(g.desde)) + ' – ' + esc(fechaCorta(g.hasta)) + '</td><td data-label="Condición"><small>' + esc(g.condicion || '') + '</small></td><td data-label="Estado"><select data-tabla="ganchos" data-i="' + i + '" data-campo="estado">' + opciones([{ valor: 'pendiente', texto: 'Pendiente de aprobación' }, { valor: 'activo', texto: 'Activo' }, { valor: 'inactivo', texto: 'Inactivo' }], g.estado) + '</select></td></tr>'; });
+    c.ganchos.forEach(function (g, i) { h += '<tr><td data-label="Ola">' + esc(g.ola) + '</td><td data-label="Gancho"><b>' + esc(g.nombre) + '</b><br><textarea data-tabla="ganchos" data-i="' + i + '" data-campo="texto" rows="2">' + esc(g.texto) + '</textarea></td><td data-label="Vigencia">' + esc(fechaCorta(g.desde)) + ' – ' + esc(fechaCorta(g.hasta)) + '</td><td data-label="Condición"><small>' + esc(g.condicion || '') + '</small></td><td data-label="Estado"><select data-tabla="ganchos" data-i="' + i + '" data-campo="estado">' + opciones([{ valor: 'pendiente', texto: 'Pendiente de aprobación' }, { valor: 'activo', texto: 'Activo' }, { valor: 'inactivo', texto: 'Inactivo' }], g.estado) + '</select></td></tr>'; });
     h += '</tbody></table></div><p class="texto3">Mientras un gancho esté pendiente, los mensajes usan la variable {gancho} con un texto neutro.</p></div>';
     return h;
   }
@@ -1262,18 +1347,18 @@ window.VDO_DATOS = (function () {
   function ajustesReglas() {
     var R = cfg().reglas, C = cfg().cadencias;
     var h = '<div class="tarjeta"><h3>Reglas de contacto</h3><div class="form-grid">' +
-      campo('Máximo de toques por conversación', '<input data-regla="maxToques" type="number" value="' + R.maxToques + '">') +
-      campo('Días de bloqueo tras un contacto', '<input data-regla="diasBloqueo" type="number" value="' + R.diasBloqueo + '">') +
-      campo('Días mínimos entre mensajes de ola', '<input data-regla="diasEntreOlas" type="number" value="' + R.diasEntreOlas + '">') +
+      campo('Máximo de toques por conversación', '<input data-regla="maxToques" type="number" min="1" value="' + esc(R.maxToques) + '">') +
+      campo('Días de bloqueo tras un contacto', '<input data-regla="diasBloqueo" type="number" min="0" value="' + esc(R.diasBloqueo) + '">') +
+      campo('Días mínimos entre mensajes de ola', '<input data-regla="diasEntreOlas" type="number" min="0" value="' + esc(R.diasEntreOlas) + '">') +
       campo('Cadencia consumidor (días desde el primer toque)', '<input data-cadencia="consumidor" value="' + attr(C.consumidor.join(', ')) + '">') +
       campo('Cadencia empresa (corporativo, pymes, grupos)', '<input data-cadencia="empresa" value="' + attr(C.empresa.join(', ')) + '">') +
-      campo('Umbral B2B · botellas (más de)', '<input data-regla="umbralBotellasB2B" type="number" value="' + R.umbralBotellasB2B + '">') +
-      campo('Umbral B2B · soles (más de)', '<input data-regla="umbralSolesB2B" type="number" value="' + R.umbralSolesB2B + '">') +
-      campo('Comisión base de embajadores', '<input data-regla="comisionBase" type="number" step="0.01" value="' + R.comisionBase + '">') +
-      campo('Comisión alta', '<input data-regla="comisionAlta" type="number" step="0.01" value="' + R.comisionAlta + '">') +
-      campo('Umbral mensual para comisión alta (S/)', '<input data-regla="umbralComisionMes" type="number" value="' + R.umbralComisionMes + '">') +
+      campo('Umbral B2B · botellas (más de)', '<input data-regla="umbralBotellasB2B" type="number" min="0" value="' + esc(R.umbralBotellasB2B) + '">') +
+      campo('Umbral B2B · soles (más de)', '<input data-regla="umbralSolesB2B" type="number" min="0" value="' + esc(R.umbralSolesB2B) + '">') +
+      campo('Comisión base de embajadores', '<input data-regla="comisionBase" type="number" step="0.01" min="0" value="' + esc(R.comisionBase) + '">') +
+      campo('Comisión alta', '<input data-regla="comisionAlta" type="number" step="0.01" min="0" value="' + esc(R.comisionAlta) + '">') +
+      campo('Umbral mensual para comisión alta (S/)', '<input data-regla="umbralComisionMes" type="number" min="0" value="' + esc(R.umbralComisionMes) + '">') +
       campo('Leyendas en mensajes masivos', '<select data-regla="leyendasEnMasivos">' + opciones([{ valor: 'true', texto: 'Sí, siempre' }, { valor: 'false', texto: 'No' }], String(R.leyendasEnMasivos)) + '</select>') +
-      '</div><p class="texto3">Leyendas: ' + esc(cfg().leyendas.join(' · ')) + '. Umbral B2B: propuesta del plan, por confirmar con Renato.</p></div>';
+      '</div><p class="texto3">Leyendas: ' + esc(cfg().leyendas.join(' · ')) + '. Umbral B2B: aplica a pedidos de botellas; propuesta del plan, por confirmar con Renato.</p></div>';
     h += '<div class="tarjeta"><h3>Segmentos</h3><div class="tabla-scroll"><table class="tabla"><thead><tr><th>Segmento</th><th>Detalle</th><th>Cadencia</th><th>Trato</th></tr></thead><tbody>' + cfg().segmentos.map(function (s) { return '<tr><td data-label="Segmento"><span class="chip seg-' + esc(s.codigo) + '">' + esc(s.num + ' · ' + s.nombre) + '</span></td><td data-label="Detalle">' + esc(s.detalle) + (s.empresas ? '<br><small class="texto3">' + esc(s.empresas.join(', ')) + '</small>' : '') + '</td><td data-label="Cadencia">' + esc(s.cadencia) + '</td><td data-label="Trato">' + esc(s.trato) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
     return h;
   }
@@ -1282,14 +1367,14 @@ window.VDO_DATOS = (function () {
     qsa('input[data-tabla],select[data-tabla],textarea[data-tabla]', raiz).forEach(function (el) {
       el.onchange = function () {
         var t = cfg()[el.getAttribute('data-tabla')], i = +el.getAttribute('data-i'), k = el.getAttribute('data-campo');
-        var v = el.value; if (el.type === 'number') v = v === '' ? null : Number(v);
+        var v = el.value; if (el.type === 'number') { if (v !== '' && isNaN(Number(v))) { toast('Escribe un número', 'alerta'); return; } v = v === '' ? null : Number(v); }
         t[i][k] = v; DB.guardarPronto(); toast('Guardado');
       };
     });
-    qsa('input[data-meta]', raiz).forEach(function (el) { el.onchange = function () { var M = cfg().metas; var k = el.getAttribute('data-meta'); if (!M[k]) M[k] = {}; M[k][el.getAttribute('data-mes')] = Number(el.value) || 0; DB.guardarPronto(); toast('Guardado · recalcula el calendario'); }; });
-    qsa('input[data-tasa]', raiz).forEach(function (el) { el.onchange = function () { var T = cfg().tasasPlan; var s = el.getAttribute('data-seg'); if (!T[s]) T[s] = { respuesta: 0, compra: 0 }; T[s][el.getAttribute('data-tasa')] = (Number(el.value) || 0) / 100; DB.guardarPronto(); toast('Guardado'); }; });
-    qsa('[data-regla]', raiz).forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-regla'); var v = el.value; if (k === 'leyendasEnMasivos') v = v === 'true'; else v = Number(v); cfg().reglas[k] = v; DB.guardarPronto(); toast('Guardado'); }; });
-    qsa('[data-cadencia]', raiz).forEach(function (el) { el.onchange = function () { var arr = el.value.split(/[,\s]+/).map(Number).filter(function (x) { return !isNaN(x); }); if (arr.length >= 2) { cfg().cadencias[el.getAttribute('data-cadencia')] = arr; DB.guardarPronto(); toast('Guardado'); } else toast('Escribe al menos dos números, por ejemplo 0, 2, 5', 'alerta'); }; });
+    qsa('input[data-meta]', raiz).forEach(function (el) { el.onchange = function () { var n = Number(el.value); if (el.value === '' || isNaN(n) || n < 0) { toast('Escribe un monto válido', 'alerta'); return; } var M = cfg().metas; var k = el.getAttribute('data-meta'); if (!M[k]) M[k] = {}; M[k][el.getAttribute('data-mes')] = n; DB.guardarPronto(); toast('Guardado · recalcula el calendario'); }; });
+    qsa('input[data-tasa]', raiz).forEach(function (el) { el.onchange = function () { var n = Number(el.value); if (el.value === '' || isNaN(n) || n < 0 || n > 100) { toast('Escribe un porcentaje entre 0 y 100', 'alerta'); return; } var T = cfg().tasasPlan; var s = el.getAttribute('data-seg'); if (!T[s]) T[s] = { respuesta: 0, compra: 0 }; T[s][el.getAttribute('data-tasa')] = n / 100; DB.guardarPronto(); toast('Guardado'); }; });
+    qsa('[data-regla]', raiz).forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-regla'); var v = el.value; if (k === 'leyendasEnMasivos') v = v === 'true'; else { v = Number(v); if (el.value === '' || isNaN(v) || v < 0) { toast('Escribe un número válido', 'alerta'); el.value = cfg().reglas[k]; return; } } cfg().reglas[k] = v; DB.guardarPronto(); toast('Guardado'); }; });
+    qsa('[data-cadencia]', raiz).forEach(function (el) { el.onchange = function () { var arr = el.value.split(/[,\s;]+/).filter(function (x) { return x !== ''; }).map(Number).filter(function (x) { return !isNaN(x) && x >= 0; }); if (arr.length >= 3 && arr[0] === 0 && arr[1] > 0 && arr[2] > arr[1]) { cfg().cadencias[el.getAttribute('data-cadencia')] = arr; DB.guardarPronto(); toast('Guardado'); } else { toast('Escribe tres números crecientes empezando en 0, por ejemplo 0, 2, 5', 'alerta'); el.value = cfg().cadencias[el.getAttribute('data-cadencia')].join(', '); } }; });
   }
 
   /* =========================== Importador CSV (asistente) =========================== */
@@ -1302,28 +1387,30 @@ window.VDO_DATOS = (function () {
     importState.defectos.segmento = sugeridoSeg; importState.defectos.consentimiento = sugeridoSeg === 'recontacto';
     renderAsistente();
   }
+  function vistaPreviaHtml() {
+    var st = importState; var vista = filasAContactos(st.parsed, st.mapeo, st.defectos).slice(0, 5);
+    return '<h4>Vista previa (5 primeras filas)</h4><div class="tabla-scroll"><table class="tabla compacta"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Empresa</th><th>Cargo</th><th>Ciudad</th><th>Segmento</th></tr></thead><tbody>' + vista.map(function (c) { return '<tr><td>' + esc(c.nombre) + '</td><td>' + esc(c.telefono) + '</td><td>' + esc(c.correo) + '</td><td>' + esc(c.empresa) + '</td><td>' + esc(c.cargo) + '</td><td>' + esc(c.ciudad) + '</td><td>' + esc(nombreSegmento(c.segmento)) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+  }
   function renderAsistente() {
     var st = importState, p = st.parsed;
     var colOpc = p.cabeceras.map(function (c, i) { return { valor: String(i), texto: c }; });
     var h = '<h3>Importar contactos · ' + esc(st.nombre) + '</h3><p class="texto2">' + entero(p.filas.length) + ' filas · ' + p.cabeceras.length + ' columnas · separador "' + (p.delim === '\t' ? 'tabulador' : p.delim) + '". Revisa a qué campo va cada columna.</p>';
     h += '<div class="form-grid">';
     CAMPOS_IMPORT.forEach(function (c) { h += campo(c.etiqueta, '<select data-mapeo="' + c.campo + '">' + opciones(colOpc, st.mapeo[c.campo] == null ? '' : String(st.mapeo[c.campo]), '— no importar —') + '</select>'); });
-    h += '</div><h4>Valores para toda la carga (si el archivo no trae la columna)</h4><div class="form-grid">' +
+    h += '</div><h4>Valores para toda la carga (si el archivo no trae la columna; solo para contactos nuevos)</h4><div class="form-grid">' +
       campo('Segmento', '<select data-defecto="segmento">' + opcionesSegmentos(st.defectos.segmento) + '</select>') +
       campo('Subsegmento', '<input data-defecto="subsegmento" value="' + attr(st.defectos.subsegmento) + '">') +
       campo('Origen', '<input data-defecto="origen" value="' + attr(st.defectos.origen) + '">') +
       campo('Ciudad', '<input data-defecto="ciudad" value="' + attr(st.defectos.ciudad) + '" placeholder="Lima">') +
       campo('Perfil', '<select data-defecto="perfil">' + opciones([{ valor: 'A', texto: 'A · alto poder adquisitivo' }, { valor: 'B', texto: 'B · pyme' }], st.defectos.perfil, 'Sin definir') + '</select>') +
       campo('Consentimiento (ya nos escribieron)', '<select data-defecto="consentimiento">' + opciones([{ valor: 'true', texto: 'Sí, escribieron primero' }, { valor: 'false', texto: 'No' }], String(st.defectos.consentimiento)) + '</select>') +
-      campo('Si ya existe (mismo teléfono o correo)', '<select data-politica>' + opciones([{ valor: 'completar', texto: 'Completar datos vacíos (recomendado)' }, { valor: 'sobrescribir', texto: 'Sobrescribir con el archivo' }, { valor: 'omitir', texto: 'Omitir la fila' }], st.politica) + '</select>') +
-      '</div>';
-    var vista = filasAContactos(p, st.mapeo, st.defectos).slice(0, 5);
-    h += '<h4>Vista previa (5 primeras filas)</h4><div class="tabla-scroll"><table class="tabla compacta"><thead><tr><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Empresa</th><th>Cargo</th><th>Ciudad</th><th>Segmento</th></tr></thead><tbody>' + vista.map(function (c) { return '<tr><td>' + esc(c.nombre) + '</td><td>' + esc(c.telefono) + '</td><td>' + esc(c.correo) + '</td><td>' + esc(c.empresa) + '</td><td>' + esc(c.cargo) + '</td><td>' + esc(c.ciudad) + '</td><td>' + esc(nombreSegmento(c.segmento)) + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      campo('Si ya existe (mismo teléfono o correo)', '<select data-politica>' + opciones([{ valor: 'completar', texto: 'Completar datos vacíos (recomendado)' }, { valor: 'sobrescribir', texto: 'Sobrescribir con las columnas del archivo' }, { valor: 'omitir', texto: 'Omitir la fila' }], st.politica) + '</select>') +
+      '</div><div id="vistaPrevia">' + vistaPreviaHtml() + '</div>';
     h += '<div class="acciones"><button class="btn" data-accion="cerrar">Cancelar</button><button class="btn primario" data-accion="ejecutar-import">Importar ' + entero(p.filas.length) + ' filas</button></div>';
     abrirModal(h, { ancho: 'ancho', sinFoco: true });
     var m = $('modalContenido');
-    qsa('[data-mapeo]', m).forEach(function (el) { el.onchange = function () { var v = el.value; if (v === '') delete st.mapeo[el.getAttribute('data-mapeo')]; else st.mapeo[el.getAttribute('data-mapeo')] = +v; renderAsistente(); }; });
-    qsa('[data-defecto]', m).forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-defecto'); st.defectos[k] = k === 'consentimiento' ? el.value === 'true' : el.value; renderAsistente(); }; });
+    qsa('[data-mapeo]', m).forEach(function (el) { el.onchange = function () { var v = el.value; if (v === '') delete st.mapeo[el.getAttribute('data-mapeo')]; else st.mapeo[el.getAttribute('data-mapeo')] = +v; $('vistaPrevia').innerHTML = vistaPreviaHtml(); }; });
+    qsa('[data-defecto]', m).forEach(function (el) { var f = function () { var k = el.getAttribute('data-defecto'); st.defectos[k] = k === 'consentimiento' ? el.value === 'true' : el.value; $('vistaPrevia').innerHTML = vistaPreviaHtml(); }; el.oninput = f; el.onchange = f; });
     qs('[data-politica]', m).onchange = function () { st.politica = this.value; };
     qs('[data-accion="cerrar"]', m).onclick = cerrarModal;
     qs('[data-accion="ejecutar-import"]', m).onclick = function () {
@@ -1331,7 +1418,7 @@ window.VDO_DATOS = (function () {
       var contactos = filasAContactos(p, st.mapeo, st.defectos);
       var r = fusionarContactos(contactos, st.politica);
       cerrarModal(); refrescar();
-      abrirModal('<h3>Importación terminada</h3><ul class="lista-resumen"><li><b>' + entero(r.nuevos) + '</b> contactos nuevos</li><li><b>' + entero(r.duplicadosActualizados) + '</b> ya existían y se ' + (st.politica === 'sobrescribir' ? 'sobrescribieron' : 'completaron') + '</li><li><b>' + entero(r.omitidos) + '</b> omitidos por duplicado</li><li><b>' + entero(r.sinDato) + '</b> filas sin teléfono ni correo (se importaron igual; revísalas)</li></ul>' + (r.detalle.length ? '<details><summary>Ver duplicados (' + r.detalle.length + ')</summary><ul>' + r.detalle.slice(0, 200).map(function (x) { return '<li>' + esc(x.nombre) + ' → ' + esc(x.con) + (x.tipo === 'omitido' ? ' (omitido)' : '') + '</li>'; }).join('') + '</ul></details>' : '') + '<div class="acciones"><button class="btn primario" data-accion="cerrar">Listo</button></div>');
+      abrirModal('<h3>Importación terminada</h3><ul class="lista-resumen"><li><b>' + entero(r.nuevos) + '</b> contactos nuevos</li><li><b>' + entero(r.duplicadosActualizados) + '</b> ya existían y se ' + (st.politica === 'sobrescribir' ? 'sobrescribieron' : 'completaron') + '</li><li><b>' + entero(r.omitidos) + '</b> omitidos por duplicado</li><li><b>' + entero(r.sinDato) + '</b> filas sin teléfono ni correo válidos (se importaron igual; revísalas)</li></ul>' + (r.detalle.length ? '<details><summary>Ver duplicados (' + r.detalle.length + ')</summary><ul>' + r.detalle.slice(0, 200).map(function (x) { return '<li>' + esc(x.nombre) + ' → ' + esc(x.con) + (x.tipo === 'omitido' ? ' (omitido)' : '') + '</li>'; }).join('') + '</ul></details>' : '') + '<div class="acciones"><button class="btn primario" data-accion="cerrar">Listo</button></div>');
       qs('[data-accion="cerrar"]', $('modalContenido')).onclick = function () { cerrarModal(); navegar('contactos'); };
     };
   }
@@ -1339,23 +1426,29 @@ window.VDO_DATOS = (function () {
   /* =========================== Acciones globales =========================== */
   function leerArchivo(input, cb) {
     var f = input.files && input.files[0]; if (!f) return;
-    var lector = new FileReader();
-    lector.onload = function () { cb(String(lector.result), f.name); input.value = ''; };
-    lector.onerror = function () { toast('No se pudo leer el archivo', 'alerta'); };
-    lector.readAsText(f, 'utf-8');
+    function leer(codificacion, luego) {
+      var lector = new FileReader();
+      lector.onload = function () { luego(String(lector.result)); };
+      lector.onerror = function () { toast('No se pudo leer el archivo', 'alerta'); };
+      lector.readAsText(f, codificacion);
+    }
+    leer('utf-8', function (texto) {
+      if (texto.indexOf('�') >= 0 && /\.(csv|txt|tsv)$/i.test(f.name)) { leer('windows-1252', function (t2) { cb(t2, f.name); input.value = ''; }); } // CSV guardado por Excel en ANSI
+      else { cb(texto, f.name); input.value = ''; }
+    });
   }
   function importarJSONDialogo(texto, nombre) {
     var json; try { json = JSON.parse(texto); } catch (e) { toast('El archivo no es un JSON válido', 'alerta'); return; }
-    if (!json || json.formato !== 'vdo-crm-respaldo') { toast('No es un respaldo de este CRM', 'alerta'); return; }
-    var tot = Object.keys(json.tablas || {}).map(function (t) { return t + ': ' + entero((json.tablas[t] || []).length); }).join(' · ');
+    if (!esObjeto(json) || json.formato !== 'vdo-crm-respaldo' || !esObjeto(json.tablas)) { toast('No es un respaldo de este CRM', 'alerta'); return; }
+    var tot = Object.keys(json.tablas).map(function (t) { return t + ': ' + entero((json.tablas[t] || []).length); }).join(' · ');
     abrirModal('<h3>Restaurar o fusionar · ' + esc(nombre) + '</h3><p class="texto2">Generado ' + esc(fechaHora(json.generado || '')) + (json.fuente ? ' · ' + esc(json.fuente) : '') + '</p><p>' + esc(tot) + '</p>' +
-      '<div class="acciones col"><button class="btn primario" data-modo="fusionar">Fusionar con lo que tengo (añade y completa; evita duplicados por teléfono o correo)</button><button class="btn peligro" data-modo="reemplazar">Reemplazar todo con este respaldo</button><button class="btn" data-accion="cerrar">Cancelar</button></div>');
+      '<div class="acciones col"><button class="btn primario" data-modo="fusionar">Fusionar con lo que tengo (añade y completa; evita duplicados por teléfono o correo; gana el registro más reciente)</button><button class="btn peligro" data-modo="reemplazar">Reemplazar todo con este respaldo</button><button class="btn" data-accion="cerrar">Cancelar</button></div>');
     var m = $('modalContenido');
     qs('[data-accion="cerrar"]', m).onclick = cerrarModal;
     qsa('[data-modo]', m).forEach(function (b) {
       b.onclick = function () {
         var modo = b.getAttribute('data-modo');
-        var correr = function () { try { var r = DB.importar(json, modo); cerrarModal(); toast(modo === 'reemplazar' ? 'Respaldo restaurado' : 'Respaldo fusionado'); navegar('contactos'); console.log('Importación', r); } catch (e) { toast(e.message, 'alerta'); } };
+        var correr = function () { try { var r = DB.importar(json, modo); cerrarModal(); toast(modo === 'reemplazar' ? 'Respaldo restaurado' : 'Respaldo fusionado'); navegar('contactos'); console.log('Importación', r); } catch (e) { toast(e.message, 'alerta', 7000); } };
         if (modo === 'reemplazar') confirmar('Esto borra todo lo que hay en este navegador y lo reemplaza por el respaldo. ¿Continuar?', correr, 'Reemplazar'); else correr();
       };
     });
@@ -1377,7 +1470,7 @@ window.VDO_DATOS = (function () {
         nuevo.forEach(function (d) { var viejo = actual.filter(function (x) { return x.fecha === d.fecha; })[0]; if (viejo) { d.estado = viejo.estado; d.notas = viejo.notas; if (viejo.focoEditado) { d.foco = viejo.foco; d.focoEditado = true; } if (viejo.cuotasEditadas) { d.cuotas = viejo.cuotas; d.cuotasEditadas = true; } } });
         DB.datos.calendario = nuevo; DB.guardar(); toast('Calendario recalculado'); break;
       }
-      case 'limpiar-filtros': DB.datos.ui.filtros.contactos = null; renderContactos(); break;
+      case 'limpiar-filtros': DB.datos.ui.filtros.contactos = null; DB.guardarPronto(); renderContactos(false); break;
       case 'cerrar': cerrarModal(); break;
     }
   }
@@ -1391,24 +1484,32 @@ window.VDO_DATOS = (function () {
       var el = ev.target.closest('[data-pantalla],[data-ir],[data-accion]');
       if (!el) return;
       if (el.hasAttribute('data-pantalla')) { navegar(el.getAttribute('data-pantalla')); return; }
-      if (el.hasAttribute('data-ir')) { var filtro = el.getAttribute('data-filtro'); if (filtro) { var f = filtrosContactos(); f.toque = filtro; } navegar(el.getAttribute('data-ir'), el.getAttribute('data-sub')); return; }
-      var acc = el.getAttribute('data-accion'); if (acc && !el.closest('#modalContenido') || acc === 'cerrar') { ev.preventDefault(); accionGlobal(acc, el); }
-      else if (acc && el.closest('#modalContenido') && ['editar-contacto', 'nuevo-contacto'].indexOf(acc) < 0 && !el.onclick) { accionGlobal(acc, el); }
+      if (el.hasAttribute('data-ir')) { var filtro = el.getAttribute('data-filtro'); if (filtro) { DB.datos.ui.filtros.contactos = null; filtrosContactos().toque = filtro; } navegar(el.getAttribute('data-ir'), el.getAttribute('data-sub')); return; }
+      var acc = el.getAttribute('data-accion'); if (!acc) return;
+      var enModal = !!el.closest('#modalContenido');
+      if (!enModal || acc === 'cerrar') { ev.preventDefault(); accionGlobal(acc, el); }
     });
-    $('p-contactos').addEventListener('input', function (ev) { var el = ev.target; if (!el.name || !el.closest('.filtros')) return; var f = filtrosContactos(); f[el.name] = el.value; DB.guardarPronto(); clearTimeout(window._tf); window._tf = setTimeout(renderContactos, el.type === 'search' ? 200 : 0); });
-    $('p-contactos').addEventListener('change', function (ev) { var el = ev.target; if (!el.name || !el.closest('.filtros')) return; var f = filtrosContactos(); f[el.name] = el.value; DB.guardarPronto(); renderContactos(); });
+    $('p-contactos').addEventListener('input', function (ev) { var el = ev.target; if (!el.name || !el.closest('.filtros')) return; var f = filtrosContactos(); f[el.name] = el.value; DB.guardarPronto(); clearTimeout(window._tf); window._tf = setTimeout(function () { renderContactos(true); }, el.type === 'search' ? 150 : 0); });
+    $('p-contactos').addEventListener('change', function (ev) { var el = ev.target; if (!el.name || !el.closest('.filtros')) return; var f = filtrosContactos(); f[el.name] = el.value; DB.guardarPronto(); renderContactos(true); });
     $('archivoCsv').addEventListener('change', function () { leerArchivo(this, asistenteCSV); });
     $('archivoJson').addEventListener('change', function () { leerArchivo(this, importarJSONDialogo); });
     qs('.modal-cerrar').onclick = cerrarModal;
-    $('modal').addEventListener('click', function (ev) { if (ev.target === $('modal')) cerrarModal(); });
+    var fondoPulsado = false;
+    $('modal').addEventListener('mousedown', function (ev) { fondoPulsado = ev.target === $('modal'); });
+    $('modal').addEventListener('click', function (ev) { if (ev.target === $('modal') && fondoPulsado) cerrarModal(); fondoPulsado = false; });
     document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('modal').hidden) cerrarModal(); });
-    window.addEventListener('beforeunload', function () { if (DB._timer) { clearTimeout(DB._timer); DB.guardar(); } });
+    window.addEventListener('beforeunload', function () { if (DB._timer) { clearTimeout(DB._timer); DB._timer = null; DB.guardar(); } });
+    window.addEventListener('storage', function (ev) {
+      if (ev.key !== CLAVE || !ev.newValue) return;
+      if (DB._timer) { toast('Hay otra pestaña del CRM abierta con cambios. Cierra una para no perder datos.', 'alerta', 8000); return; }
+      try { var otro = JSON.parse(ev.newValue); if (esObjeto(otro)) { DB.datos = otro; DB.migrar(); refrescar(); toast('Datos actualizados desde otra pestaña'); } } catch (e) { }
+    });
     navegar(DB.datos.ui.pantalla || 'hoy');
   }
 
   window.VDO = {
-    DB: DB, util: { hoyISO: hoyISO, ahoraISO: ahoraISO, isoDe: isoDe, fechaCorta: fechaCorta, fechaLarga: fechaLarga, soles: soles, numero: numero, normTelefono: normTelefono, telefonoDigitos: telefonoDigitos, normCorreo: normCorreo, sumarDias: sumarDias, diasEntre: diasEntre, parseCSV: parseCSV, adivinarMapeo: adivinarMapeo, aCSV: aCSV, nuevoId: nuevoId },
-    reglas: { puedeIniciarOla: puedeIniciarOla, derivarB2B: derivarB2B, proximoToqueTras: proximoToqueTras, cadenciaDe: cadenciaDe, olaDe: olaDe, ganchosDe: ganchosDe, armarMensaje: armarMensaje, urlWhatsApp: urlWhatsApp, urlCorreo: urlCorreo, variablesDe: variablesDe },
+    DB: DB, util: { hoyISO: hoyISO, ahoraISO: ahoraISO, isoDe: isoDe, fechaValida: fechaValida, fechaCorta: fechaCorta, fechaLarga: fechaLarga, soles: soles, numero: numero, normTelefono: normTelefono, telefonoDigitos: telefonoDigitos, normCorreo: normCorreo, correoValido: correoValido, sumarDias: sumarDias, diasEntre: diasEntre, parseCSV: parseCSV, adivinarMapeo: adivinarMapeo, aCSV: aCSV, nuevoId: nuevoId, esc: esc },
+    reglas: { puedeIniciarOla: puedeIniciarOla, derivarB2B: derivarB2B, proximoToqueTras: proximoToqueTras, cadenciaDe: cadenciaDe, olaDe: olaDe, ganchosDe: ganchosDe, armarMensaje: armarMensaje, urlWhatsApp: urlWhatsApp, urlCorreo: urlCorreo, variablesDe: variablesDe, rellenar: rellenar },
     importar: { fusionarContactos: fusionarContactos, filasAContactos: filasAContactos, asistenteCSV: asistenteCSV, importarJSONDialogo: importarJSONDialogo },
     ui: { navegar: navegar, refrescar: refrescar, toast: toast, abrirModal: abrirModal, cerrarModal: cerrarModal, copiar: copiar, formContacto: formContacto },
     generarCalendario: generarCalendario

@@ -54,8 +54,8 @@ window.VDO_DATOS = (function () {
     maxToques: 3,
     diasBloqueo: 7,            // no escribir a nadie contactado en los últimos 7 días
     diasEntreOlas: 21,         // máximo un mensaje de ola por persona cada tres semanas
-    umbralBotellasB2B: 12,     // más de 12 botellas → derivar a B2B
-    umbralSolesB2B: 1500,      // más de S/ 1,500 → derivar a B2B
+    umbralBotellasB2B: 12,     // más de 12 botellas → derivar a B2B (pedidos de botellas; las experiencias de grupo son B2C)
+    umbralSolesB2B: 1500,      // más de S/ 1,500 en botellas → derivar a B2B
     umbralB2BEstado: 'por_confirmar', // el PDF lo deja como propuesta a confirmar con Renato
     comisionBase: 0.10,
     comisionAlta: 0.15,
@@ -86,11 +86,12 @@ window.VDO_DATOS = (function () {
     { id: 'fivepack', nombre: 'Five Pack Gold (5 × 700 ml)', botellas: 5, precio: 399.90, anaquel: null, estado: 'por_confirmar', fuente: 'Catálogo de setiembre' }
   ];
 
+  // codigo = módulo principal del ERP (maestro del Centro de Mando); los que no coinciden con un módulo quedan por confirmar
   var EXPERIENCIAS = [
-    { id: 'catador', nombre: 'Experto Catador', precio: 150, codigo: '70001139' },
-    { id: 'coctelero', nombre: 'Experto Coctelero', precio: 200, codigo: '70001140' },
-    { id: 'arte_pisco', nombre: 'El Arte del Pisco', precio: 290, codigo: '70001138' },
-    { id: 'arte_cocteleria', nombre: 'El Arte de la Coctelería', precio: 330, codigo: '70001140' },
+    { id: 'catador', nombre: 'Experto Catador', precio: 150, codigo: '', nota: 'Módulo del ERP por confirmar' },
+    { id: 'coctelero', nombre: 'Experto Coctelero', precio: 200, codigo: '', nota: 'Módulo del ERP por confirmar' },
+    { id: 'arte_pisco', nombre: 'El Arte del Pisco', precio: 290, codigo: '', nota: 'Módulo del ERP por confirmar' },
+    { id: 'arte_cocteleria', nombre: 'El Arte de la Coctelería', precio: 330, codigo: '', nota: 'Módulo del ERP por confirmar' },
     { id: 'master', nombre: 'Master of Pisco', precio: 420, codigo: '70001141' }
   ];
 

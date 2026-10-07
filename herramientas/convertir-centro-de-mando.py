@@ -37,12 +37,13 @@ def norm_tel(t):
     d = re.sub(r"\D", "", s)
     if not d: return ""
     if d.startswith("00"): d = d[2:]
-    if d.startswith("0") and len(d) in (9, 10) and not d.startswith("05"): d = d[1:]
+    if d.startswith("0") and len(d) in (9, 10): d = d[1:]
+    if len(d) < 7: return ""
     if len(d) == 9 and d[0] == "9": return "+51" + d
     if len(d) == 11 and d.startswith("51"): return "+" + d
     if len(d) == 12 and d.startswith("051"): return "+" + d[1:]
     if len(d) == 7: return "+511" + d
-    if len(d) == 8 and d[0] == "1": return "+51" + d
+    if len(d) == 8: return "+51" + d
     if len(d) >= 10: return "+" + d
     return "+51" + d
 
@@ -149,7 +150,7 @@ for p in docs("pedidos"):
         "fecha": fecha, "linea": "experiencia" if p.get("linea") == "piscoroom" else "botellas", "items": items,
         "botellas": botellas, "personas": numero(p.get("personas")) if p.get("personas") else 0, "total": total,
         "gancho": "", "codigoOrigen": "", "estado": estado, "fechaCierre": fecha if estado in ("pagado", "entregado") else "",
-        "motivoPerdida": "", "segmento": seg, "derivarB2B": botellas > 12 or total > 1500, "embajadorId": "",
+        "motivoPerdida": "", "segmento": seg, "derivarB2B": (p.get("linea") != "piscoroom") and (botellas > 12 or total > 1500), "embajadorId": "",
         "modalidad": p.get("modalidad", ""), "tour": p.get("tour", ""), "fechaEntrega": p.get("fentrega", ""),
         "notas": limpio(" · ".join(x for x in [p.get("notaItems"), p.get("descuento") and "Descuento: " + p["descuento"], p.get("origen")] if x)),
         "createdAt": (p.get("createdAt") or ahora)[:16], "updatedAt": ahora
