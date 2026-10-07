@@ -50,7 +50,7 @@ Para regenerar el archivo único tras editar `src/`: `python3 herramientas/ensam
 | Parte | Contenido | Estado |
 |---|---|---|
 | 1 | Modelo de datos, importación CSV/JSON, respaldo, Ajustes (precios, ganchos, metas, reglas), Contactos básico | Lista |
-| 2 | HOY (cola del día con mensajes) y CALENDARIO editable | Pendiente |
+| 2 | HOY (cola del día con mensajes listos, marcar enviado/respondió/compró, cierre del día) y CALENDARIO editable | Lista |
 | 3 | CONTACTOS completo y PIPELINE (kanban) | Pendiente |
 | 4 | VENTAS, calculadora de grupos, EMBAJADORES | Pendiente |
 | 5 | MÉTRICAS, PLANTILLAS editables, REPORTE SEMANAL | Pendiente |
