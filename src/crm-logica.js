@@ -1085,7 +1085,7 @@
       lector.readAsText(f, codificacion);
     }
     leer('utf-8', function (texto) {
-      if (texto.indexOf('�') >= 0 && /\.(csv|txt|tsv)$/i.test(f.name)) { leer('windows-1252', function (t2) { cb(t2, f.name); input.value = ''; }); } // CSV guardado por Excel en ANSI
+      if (texto.indexOf('\uFFFD') >= 0 && /\.(csv|txt|tsv)$/i.test(f.name)) { leer('windows-1252', function (t2) { cb(t2, f.name); input.value = ''; }); } // CSV guardado por Excel en ANSI
       else { cb(texto, f.name); input.value = ''; }
     });
   }
