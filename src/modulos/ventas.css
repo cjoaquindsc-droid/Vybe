@@ -1,0 +1,61 @@
+/* ============================================================================
+   ventas.css · Pantalla VENTAS · ventas, calculadora de grupos y embajadores
+   (clases con prefijo .ventas-)
+   ========================================================================== */
+
+/* Avance del trimestre: barra con marcas de cuota y proyección */
+.ventas-barra { position: relative; height: 10px; background: var(--oro-fondo); border: 1px solid var(--borde-oro); border-radius: 6px; margin: 16px 0 30px; }
+.ventas-barra > i { display: block; height: 100%; width: 0; background: var(--oro); border-radius: 5px; transition: width .3s; }
+.ventas-barra.ok > i { background: var(--ok); }
+.ventas-marca { position: absolute; top: -6px; width: 2px; height: 20px; background: var(--texto2); margin-left: -1px; }
+.ventas-marca.proy { background: var(--oro-claro); }
+.ventas-marca > span { position: absolute; top: 22px; left: 0; transform: translateX(-50%); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--texto3); white-space: nowrap; }
+.ventas-marca.proy > span { color: var(--oro-claro); }
+.ventas-marca.der > span { left: auto; right: 0; transform: none; }
+.ventas-marca.izq > span { left: 0; transform: none; }
+.ventas-sub { display: block; font-size: 11.5px; color: var(--texto3); margin-top: 2px; }
+.kpi .val.chico { font-size: 17px; }
+
+/* Mix botellas / experiencia: barra doble (real y objetivo) */
+.ventas-mix { display: grid; gap: 10px; margin: 12px 0 6px; }
+.ventas-mix-fila { display: grid; grid-template-columns: 80px 1fr 110px; gap: 10px; align-items: center; font-size: 12.5px; color: var(--texto2); }
+.ventas-mix-barra { display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: var(--superficie2); border: 1px solid var(--borde); }
+.ventas-mix-barra i { display: block; height: 100%; }
+.ventas-mix-barra .bot, .ventas-leyenda .bot { background: var(--oro); }
+.ventas-mix-barra .exp, .ventas-leyenda .exp { background: var(--info); }
+.ventas-leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--texto2); margin-top: 8px; }
+.ventas-leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+
+/* Tablas del módulo */
+.ventas-tabla td.num.bien { color: var(--ok); }
+.ventas-pos { font-family: var(--titulos); color: var(--oro); font-size: 16px; }
+.tabla tr.ventas-sel td { background: var(--oro-fondo); }
+.tabla tr[data-vta="calc-elegir"] { cursor: pointer; }
+.tabla tr.ventas-fila-mes-actual td { background: var(--oro-fondo); }
+.ventas-nota-regla { margin: 10px 0 0; }
+
+/* Calculadora */
+.ventas-aviso { color: var(--aviso); background: rgba(231, 192, 106, .08); border: 1px solid var(--borde-oro); border-radius: var(--radio); padding: 8px 10px; font-size: 13px; margin: 8px 0; }
+#calcForm .campo small { line-height: 1.3; }
+
+/* Modales del módulo */
+.ventas-modal h4 { margin-top: 18px; }
+.ventas-modal .kpis { margin: 10px 0; }
+.ventas-modal .acciones.final { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--borde); }
+.ventas-modal code { font-size: 13px; }
+
+/* ---------- celular: tablas como tarjetas y botones de 36 px ---------- */
+@media (max-width: 820px) {
+  #p-ventas .btn, .ventas-modal .btn { min-height: 36px; }
+  .ventas-mix-fila { grid-template-columns: 64px 1fr 92px; }
+  .ventas-marca > span { font-size: 9.5px; }
+  .tabla.ventas-tabla thead { display: none; }
+  .tabla.ventas-tabla tr { display: block; border-bottom: 1px solid var(--borde); padding: 8px 0; }
+  .tabla.ventas-tabla tr:last-child { border-bottom: none; }
+  .tabla.ventas-tabla td { display: block; border: none; padding: 3px 12px; text-align: left; white-space: normal; max-width: none; }
+  .tabla.ventas-tabla td[data-label]::before { content: attr(data-label) " · "; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--texto3); }
+  .tabla.ventas-tabla td.acciones-fila { padding-top: 8px; }
+  .tabla.ventas-tabla td.acciones-fila .btn { margin: 0 6px 6px 0; }
+  .tabla.ventas-tabla tr.total td { border-top: none; }
+  .tabla.ventas-tabla tr.total td:first-child { border-top: 1px solid var(--borde-oro); padding-top: 8px; }
+}

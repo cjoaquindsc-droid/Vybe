@@ -1003,7 +1003,7 @@
         '<span class="num total-item">' + soles((Number(it.cantidad) || 0) * (Number(it.precio) || 0)) + '</span><button type="button" class="btn chico peligro" data-quitar="' + i + '" title="Quitar">×</button></div>';
     }
     function agrupar(lista, sel) { var grupos = {}; lista.forEach(function (x) { (grupos[x.grupo] = grupos[x.grupo] || []).push(x); }); return Object.keys(grupos).map(function (g) { return '<optgroup label="' + attr(g) + '">' + grupos[g].map(function (x) { return '<option value="' + attr(x.id) + '"' + (x.id === sel ? ' selected' : '') + '>' + esc(x.nombre) + (x.precio != null ? ' · ' + soles(x.precio) : '') + (x.estado === 'por_confirmar' ? ' (por confirmar)' : '') + '</option>'; }).join('') + '</optgroup>'; }).join(''); }
-    var h = '<h3>' + (venta ? 'Editar venta' : 'Registrar venta u oportunidad') + '</h3>' + (contacto ? '<p class="texto2">' + esc(contacto.nombre) + ' · ' + esc(nombreSegmento(contacto.segmento)) + (contacto.telefono ? ' · ' + esc(contacto.telefono) : '') + '</p>' : '') +
+    var h = '<h3>' + (venta && venta.id ? 'Editar venta' : venta ? 'Nueva cotización' : 'Registrar venta u oportunidad') + '</h3>' + (contacto ? '<p class="texto2">' + esc(contacto.nombre) + ' · ' + esc(nombreSegmento(contacto.segmento)) + (contacto.telefono ? ' · ' + esc(contacto.telefono) : '') + '</p>' : '') +
       '<form id="formVenta" class="form-venta">' +
       (!contacto ? campo('Contacto', '<input name="buscarContacto" list="listaContactos" placeholder="Escribe el nombre o teléfono" value="' + attr(v.contactoId ? ((DB.buscar('contactos', v.contactoId) || {}).nombre || '') : '') + '"><datalist id="listaContactos">' + DB.tabla('contactos').slice(0, 2000).map(function (x) { return '<option value="' + attr(x.nombre + (x.telefono ? ' · ' + x.telefono : '')) + '">'; }).join('') + '</datalist>') : '') +
       '<div class="venta-items-cab"><span>Producto</span><span>Descripción</span><span>Cant./pers.</span><span>P. unit.</span><span>Total</span><span></span></div><div id="ventaItems">' + v.items.map(filaItem).join('') + '</div>' +
@@ -1020,7 +1020,7 @@
       campo('Total manual (S/, opcional)', inp('totalManual', v.totalManual == null ? '' : v.totalManual, 'type="number" step="0.01" min="0"'), 'Déjalo vacío para usar la suma de las líneas') +
       campo('Motivo de pérdida', inp('motivoPerdida', v.motivoPerdida, 'placeholder="precio, fecha, sin respuesta…"')) +
       '<label class="campo ancho"><span>Notas</span><textarea name="notas" rows="2">' + esc(v.notas || '') + '</textarea></label>' +
-      '</div><div class="acciones ancho">' + (venta ? '<button type="button" class="btn peligro izq" data-eliminar-venta>Eliminar</button>' : '') + '<button type="button" class="btn" data-accion="cerrar">Cancelar</button><button type="submit" class="btn primario">Guardar</button></div></form>';
+      '</div><div class="acciones ancho">' + (venta && venta.id ? '<button type="button" class="btn peligro izq" data-eliminar-venta>Eliminar</button>' : '') + '<button type="button" class="btn" data-accion="cerrar">Cancelar</button><button type="submit" class="btn primario">Guardar</button></div></form>';
     abrirModal(h, { ancho: 'ancho' });
     var form = $('formVenta');
     function leerItems() {
@@ -1050,7 +1050,7 @@
       ev.preventDefault(); var f = leerForm(form);
       var items = leerItems().filter(function (it) { return it.cantidad > 0 || it.nombre; });
       if (!items.length) { toast('Agrega al menos una línea', 'alerta'); return; }
-      var nueva = venta ? clonar(venta) : { id: nuevoId('v'), createdAt: ahoraISO() };
+      var nueva = venta ? clonar(venta) : {}; if (!nueva.id) { nueva.id = nuevoId('v'); nueva.createdAt = ahoraISO(); }
       ['fecha', 'estado', 'fechaCierre', 'gancho', 'codigoOrigen', 'segmento', 'embajadorId', 'motivoPerdida', 'notas'].forEach(function (k) { nueva[k] = f[k]; });
       nueva.fecha = isoDe(f.fecha) || hoy; nueva.fechaCierre = isoDe(f.fechaCierre); nueva.fechaEntrega = isoDe(f.fechaEntrega); nueva.personas = f.personas; nueva.totalManual = f.totalManual === '' ? null : Number(f.totalManual); nueva.items = items; nueva.linea = lineaDe(items);
       if (!contacto && f.buscarContacto) { var txt = normTexto(f.buscarContacto.split(' · ')[0]); var dig = f.buscarContacto.replace(/\D/g, ''); var cc = DB.tabla('contactos').filter(function (x) { return normTexto(x.nombre) === txt || (dig.length >= 9 && telefonoDigitos(x.telefono) === dig); })[0]; if (cc) { nueva.contactoId = cc.id; if (!nueva.segmento) nueva.segmento = cc.segmento; } }
