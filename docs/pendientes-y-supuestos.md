@@ -1,6 +1,6 @@
 # Pendientes y supuestos · CRM B2C Viñas de Oro
 
-Última actualización: 07/10/2026. Lo que el plan (PDF del 05/10) no cierra o contradice a la especificación quedó precargado como dato editable y marcado aquí.
+Última actualización: 08/10/2026 (entrega de las partes 3 a 6). Lo que el plan (PDF del 05/10) no cierra o contradice a la especificación quedó precargado como dato editable y marcado aquí.
 
 ## Supuestos tomados (editables en Ajustes)
 
@@ -23,6 +23,10 @@
 | Piloto | Segmento "Piloto Chiclayo y Santa Cruz" con ciudades editables; el plan arranca octubre con Chiclayo, Cusco e Ica | Santa Cruz y el hotel no están en el PDF. |
 | Experiencias y módulos del ERP | Solo Master of Pisco tiene código (70001141); los demás quedan por confirmar | Los módulos del maestro (Cata y Maridaje, Cocktail Masterclass, Historia y Legado) no coinciden uno a uno con las cinco experiencias. |
 | Consentimiento | Los contactos del Centro de Mando por WhatsApp o Instagram se importan con consentimiento = sí (nos escribieron); los de correo y los de la base Breca, no | Regla del número de empresa. |
+| Segmento en métricas y reporte | Las ventas, respuestas y compras se atribuyen al segmento **del contacto**; el segmento guardado en la venta solo se usa si la venta no tiene contacto | Las tasas se calculan sobre contactos y así una persona no cuenta en dos segmentos. |
+| Semana del reporte | Lunes a sábado; "próxima semana" es la siguiente de lunes a sábado | Días de atención del calendario. |
+| Ranking y comisiones | El ranking de MÉTRICAS es del trimestre; la comisión se calcula mes a mes (10 % o 15 % según el mes) y los pagos se descuentan del saldo | Especificación de embajadores. |
+| Alerta de corte | Brecha = acumulado real − meta acumulada (proyección) a hoy; ritmo requerido = lo que falta para S/ 200,000 ÷ días de atención restantes; contactos/día = ritmo ÷ (ticket promedio × tasa de compra del periodo) | Fórmula propia; cuando no hay ventas usa ticket S/ 215 y tasa 5 % (mínimo 1 %). |
 | Dormidos | Quien recibe el tercer toque y no responde en la ventana siguiente pasa a dormido automáticamente; vuelve a la cola cuando empieza otra ola y han pasado 3 semanas | Especificación. |
 
 ## Pendientes que dependen de Joaquín o del negocio
@@ -35,6 +39,10 @@
 - Lista final de embajadores y sus códigos (el CRM sugiere CIUDAD-NOMBRE).
 - Link de pago (Izipay) por venta: el CRM deja el marcador [LINK DE PAGO] en los mensajes; se pega a mano.
 
+## Entregado y probado (08/10/2026)
+
+Las ocho pantallas más Ajustes funcionan en `crm-vdo.html` abierto por `file://` en laptop (1366 px) y celular (390 px). Pruebas automáticas en Chromium: núcleo 72, HOY 65, CALENDARIO 68, PIPELINE 24, VENTAS 18, MÉTRICAS 20, PLANTILLAS 20, REPORTE 20 comprobaciones; todas pasan al 08/10/2026. No se probó en Safari de iPhone ni en Edge reales (solo Chromium).
+
 ## Limitaciones conocidas
 
 - Los datos viven en el navegador donde se abre el archivo. Laptop y celular no se sincronizan solos: se pasa el respaldo JSON de uno a otro. Safari en iPhone puede borrar datos de sitios locales tras días sin uso: en celular conviene Chrome y respaldo frecuente.
@@ -42,3 +50,6 @@
 - WhatsApp Business no exporta etiquetas ni historial a CSV: se importa la agenda del celular y se elige el segmento al importar.
 - Copiar al portapapeles en iOS requiere que el usuario toque el botón (ya es así) y a veces un segundo toque.
 - El CRM no envía mensajes ni correos: abre wa.me o el cliente de correo con el texto listo.
+- El arrastrar y soltar del PIPELINE requiere mouse o trackpad; en el celular se usan los botones ◀ ▶.
+- Las "Propuestas" de MÉTRICAS cuentan contactos con cotización abierta o en etapa Proponer o posterior; no hay un registro separado de propuestas enviadas.
+- El historial del REPORTE guarda hasta 20 reportes en el navegador (también van en el respaldo JSON).

@@ -37,6 +37,16 @@ Cada pantalla grande vive en `src/modulos/<nombre>.js` (+ `src/modulos/<nombre>.
 - `ui`: `navegar(pantalla, sub?)`, `refrescar()`, `toast(msg, 'alerta'?)`, `abrirModal(html, {ancho:'ancho'})`, `cerrarModal()`, `confirmar(texto, onOk, textoBoton)`, `copiar(texto)`, `formContacto(c|null)`, `formVenta`, `opciones(lista, valor, vacio)`, `opcionesSegmentos`, `opcionesEtapas`, `campo(etiqueta, inputHtml, ayuda)`, `inp(nombre, valor, extra)`, `leerForm(form)`, `$`, `qs`, `qsa`.
 - `DIAS`, `MESES`, `ORDEN_ETAPAS`.
 
+## API que exponen los módulos (si están cargados)
+
+- `ui.fichaContacto(id|contacto)` (pipeline): abre la ficha completa con embudo, historial, ventas y acciones. HOY y CONTACTOS la usan si existe.
+- `modulos.ventas` (ventas): `ventasDelTrimestre()`, `fechaEfectiva(v)`, `precioPaquete`, `precioExperiencia`, `calculo(params)`, `ventaDesdeCalculadora`, `comisionPorMes(embajador, mes)`, `resumenEmbajador`, `rankingEmbajadores(rango?)`, `sugerirCodigo(nombre, ciudad)`.
+- `metricas` (metricas): `alertaCorte()` → `{corte, fecha, acumulado, metaALaFecha, cuotaALaFecha, brecha, ritmoActual, ritmoRequerido, ticket, tasaCompra, contactosDiaRequeridos, contactosDiaActuales, diasRestantes, nivel ok|aviso|alerta, texto}`; `datos(rango)`; `rango()`; `cortes()`; `ranking()`.
+- `plantillas` (plantillas): `VARIABLES`, `variablesDesconocidas(texto)`, `importar(jsonTexto)`.
+- `reporte` (reporte): `generar(lunesISO)` → texto plano del reporte de esa semana.
+
+Comprueba la existencia antes de usar (`if (V.metricas) …`): cada módulo debe funcionar solo.
+
 ## Tablas (ver docs/modelo-de-datos.md)
 
 `contactos` (nombre, telefono, correo, empresa, cargo, ciudad, segmento, subsegmento, origen, perfil A|B, consentimiento, ultimoContacto, proximoToque, inicioConversacion, ultimaOla, respondio, cierrePendiente, etapa, estado activo|dormido|perdido|b2b, toques, ocasion, personas, notas, referidoPor, codigoReferido, yaCompro, totalInvertido, prueba) · `interacciones` (contactoId, fecha `AAAA-MM-DDTHH:MM`, canal, toque, ola, plantillaId, mensaje, respuesta, resultado enviado|respondio|compro|sin_respuesta, codigoOrigen) · `ventas` (contactoId, cuentaId, fecha, linea botellas|experiencia, items[{productoId, nombre, cantidad, precio, total, linea, botellas, porPersona}], botellas, personas, total, gancho, codigoOrigen, estado cotizado|link_enviado|pagado|entregado|perdido, fechaCierre, fechaEntrega, motivoPerdida, segmento, derivarB2B, embajadorId, notas) · `embajadores` (nombre, ciudad, codigo, telefono, contactoId, estado candidato|activo|inactivo, desde, pagos[{fecha, monto, nota}]) · `cuentas` (empresa, segmento, contactos[], paquete, personas, fechaEvento, monto, estado contactado|respondio|reunion|cotizacion|cerrado|perdido, notas, proximoPaso, fechaProximoPaso) · `calendario` (fecha, dow, ola, foco, hito, periodo, metaDia, cuotaDia, cuotas{segmento}, estado pendiente|en_curso|cumplido|no_cumplido, notas, esCorte, focoEditado, cuotasEditadas) · `plantillas` (id, nombre, segmento|'*', toque, ola 0..3, canal whatsapp|correo, asunto, texto, masivo, activa).
