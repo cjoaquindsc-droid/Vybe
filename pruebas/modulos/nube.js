@@ -5,23 +5,31 @@ let fallos = 0; function ok(c, m) { if (c) console.log('  ✓ ' + m); else { fal
 const FAKE = () => {
   const clone = o => JSON.parse(JSON.stringify(o));
   let store = {}; try { store = JSON.parse(localStorage.getItem('__nube_fake') || '{}'); } catch (e) { store = {}; }
+  const flag = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  if (flag('__nube_espera')) window.__VDO_NUBE_ESPERA = Number(flag('__nube_espera'));
+  const cachePrimero = !!flag('__nube_cache'); const fallarCarga = !!flag('__nube_fallar_carga');
   const persistir = () => { try { localStorage.setItem('__nube_fake', JSON.stringify(store)); } catch (e) { } };
   const listeners = []; const log = [];
-  const snapDoc = (id, body) => { const d = body === undefined ? undefined : clone(body); return { id, exists: d !== undefined, data: () => d, metadata: { fromCache: false, hasPendingWrites: false } }; };
-  const colSnap = (l) => { const col = store[l.path] || {}; const ids = Object.keys(col).sort(); const docs = ids.map(id => snapDoc(id, col[id])); const changes = []; const now = {};
+  const meta = (fromCache, pend) => ({ fromCache: !!fromCache, hasPendingWrites: !!pend });
+  const snapDoc = (id, body, fromCache, pend) => { const d = body === undefined ? undefined : clone(body); return { id, exists: d !== undefined, data: () => d, metadata: meta(fromCache, pend) }; };
+  const colSnap = (l, opciones) => { const o = opciones || {}; const col = o.vacio ? {} : (store[l.path] || {}); const ids = Object.keys(col).sort(); const docs = ids.map(id => snapDoc(id, col[id], o.fromCache)); const changes = []; const now = {};
     ids.forEach((id, i) => { const j = JSON.stringify(col[id]); now[id] = j; if (!(id in l.seen)) changes.push({ type: 'added', doc: docs[i], oldIndex: -1, newIndex: i }); else if (l.seen[id] !== j) changes.push({ type: 'modified', doc: docs[i], oldIndex: i, newIndex: i }); });
     Object.keys(l.seen).forEach(id => { if (!(id in now)) changes.push({ type: 'removed', doc: snapDoc(id, JSON.parse(l.seen[id])), oldIndex: -1, newIndex: -1 }); });
-    l.seen = now; return { docs, size: docs.length, empty: !docs.length, docChanges: () => changes, metadata: { fromCache: false, hasPendingWrites: false } }; };
-  const notify = (p) => { const c = p.split('/')[0]; listeners.forEach(l => { if (l.tipo === 'col' && l.path === c) setTimeout(() => l.cb(colSnap(l)), 5); if (l.tipo === 'doc' && l.path === p) setTimeout(() => l.cb(snapDoc(p.split('/')[1], (store[c] || {})[p.split('/')[1]])), 5); }); };
+    if (!o.fromCache) l.seen = now; return { docs, size: docs.length, empty: !docs.length, docChanges: () => changes, metadata: meta(o.fromCache, false) }; };
+  const notify = (p) => { const c = p.split('/')[0], id = p.split('/')[1]; listeners.forEach(l => { if (l.tipo === 'col' && l.path === c) setTimeout(() => l.cb(colSnap(l)), 5); if (l.tipo === 'doc' && l.path === p) setTimeout(() => l.cb(snapDoc(id, (store[c] || {})[id])), 5); }); };
+  // eco local de una escritura propia aún no confirmada (hasPendingWrites: true), como hace la plataforma
+  const notifyPendiente = (p, body) => { const c = p.split('/')[0], id = p.split('/')[1]; listeners.forEach(l => {
+    if (l.tipo === 'col' && l.path === c) { const col = Object.assign({}, store[c] || {}); const existia = id in col; col[id] = body; const ids = Object.keys(col).sort(); const docs = ids.map(x => snapDoc(x, col[x], false, x === id)); const i = ids.indexOf(id); const changes = [{ type: existia ? 'modified' : 'added', doc: docs[i], oldIndex: existia ? i : -1, newIndex: i }]; setTimeout(() => l.cb({ docs, size: docs.length, empty: false, docChanges: () => changes, metadata: meta(false, true) }), 1); }
+    if (l.tipo === 'doc' && l.path === p) setTimeout(() => l.cb(snapDoc(id, body, false, true)), 1); }); };
   window.__nube = { get store() { return store; }, log, lento: 2, fallar: null, codigo: 'unavailable', escribir(c, id, body) { (store[c] = store[c] || {})[id] = clone(body); persistir(); notify(c + '/' + id); }, borrar(c, id) { if (store[c]) delete store[c][id]; persistir(); notify(c + '/' + id); }, limpiar() { store = {}; persistir(); } };
   const docRef = (c, id) => { const p = c + '/' + id; return { id, path: p,
     get: () => Promise.resolve(snapDoc(id, (store[c] || {})[id])),
-    set: (body) => new Promise((res, rej) => { log.push(['set', p]); setTimeout(() => { if (window.__nube.fallar && window.__nube.fallar(p)) return rej({ code: window.__nube.codigo, message: 'simulado' }); (store[c] = store[c] || {})[id] = clone(body); persistir(); notify(p); res(); }, window.__nube.lento); }),
+    set: (body) => new Promise((res, rej) => { log.push(['set', p]); notifyPendiente(p, clone(body)); setTimeout(() => { if (window.__nube.fallar && window.__nube.fallar(p)) return rej({ code: window.__nube.codigo, message: 'simulado' }); (store[c] = store[c] || {})[id] = clone(body); persistir(); notify(p); res(); }, window.__nube.lento); }),
     update: () => Promise.reject({ code: 'invalid_argument', message: 'no usado' }),
     delete: () => new Promise((res) => { log.push(['delete', p]); setTimeout(() => { if (store[c]) delete store[c][id]; persistir(); notify(p); res(); }, window.__nube.lento); }),
-    onSnapshot: (cb, err) => { const l = { tipo: 'doc', path: p, cb, err }; listeners.push(l); setTimeout(() => cb(snapDoc(id, (store[c] || {})[id])), 5); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; } }; };
+    onSnapshot: (cb, err) => { if (fallarCarga) { setTimeout(() => err({ code: 'unavailable', message: 'puente caído' }), 5); return () => {}; } const l = { tipo: 'doc', path: p, cb, err }; listeners.push(l); if (cachePrimero) setTimeout(() => cb(snapDoc(id, undefined, true)), 5); setTimeout(() => cb(snapDoc(id, (store[c] || {})[id])), cachePrimero ? 300 : 5); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; } }; };
   const db = { doc: (p) => { const s = p.split('/'); if (s.length !== 2 || !/^[A-Za-z0-9_\-.~:@+]+$/.test(s[1])) throw new TypeError('ruta inválida ' + p); return docRef(s[0], s[1]); },
-    collection: (c) => ({ path: c, doc: (id) => docRef(c, id), onSnapshot: (cb, err) => { const l = { tipo: 'col', path: c, cb, err, seen: {} }; listeners.push(l); setTimeout(() => cb(colSnap(l)), 5); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; } }) };
+    collection: (c) => ({ path: c, doc: (id) => docRef(c, id), onSnapshot: (cb, err) => { if (fallarCarga) { setTimeout(() => err({ code: 'unavailable', message: 'puente caído' }), 5); return () => {}; } const l = { tipo: 'col', path: c, cb, err, seen: {} }; listeners.push(l); if (cachePrimero) setTimeout(() => cb(colSnap(l, { vacio: true, fromCache: true })), 5); setTimeout(() => cb(colSnap(l)), cachePrimero ? 300 : 5); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; } }) };
   const user = { isOwner: () => Promise.resolve(true), canEdit: () => Promise.resolve(true), can: () => Promise.resolve(true), id: () => Promise.resolve('u_prueba') };
   window.claude = { use: (n) => new Promise(r => setTimeout(() => r(window.__sinDb ? null : n === 'db' ? db : n === 'user' ? user : null), 20)) };
 };
@@ -111,6 +119,45 @@ const FAKE = () => {
   page.once('dialog', d => d.accept());
   await page.evaluate(() => VDO.DB.restablecer());
   ok(await espera(() => Object.keys(__nube.store.contactos || {}).length === 0 && Object.keys(__nube.store.calendario).length === 73 && VDO.nube.pendientes() === 0, 60000), 'borra todo en la nube y deja el plan');
+  console.log('11. Primera entrega de caché vacía: no se siembra encima de la nube');
+  await page.evaluate(() => { __nube.escribir('contactos', 'c_cache', { nombre: 'Ya Estaba', telefono: '+51933333333', segmento: 'boca', etapa: 'atraer', estado: 'activo' }); localStorage.setItem('__nube_cache', '1'); });
+  await page.reload(); await page.waitForFunction(() => window.VDO && VDO.nube && VDO.nube.activa(), null, { timeout: 15000 }); await sinPendientes();
+  const escr = await page.evaluate(() => __nube.log.filter(x => x[0] === 'set').map(x => x[1]));
+  ok(!escr.some(r => /^(calendario|plantillas|config)\//.test(r)) && (await page.evaluate(() => Object.keys(__nube.store.calendario).length)) === 73, 'con la caché vacía primero, espera la entrega definitiva y no reescribe el plan (' + escr.length + ' escrituras)');
+  ok((await page.evaluate(() => !!VDO.DB.buscar('contactos', 'c_cache') && VDO.DB.tabla('calendario').length === 73)), 'carga lo que ya había en la nube');
+  await page.evaluate(() => localStorage.removeItem('__nube_cache'));
+  console.log('12. Fallo al cargar: la tarjeta de error se ve y se puede pasar a modo local');
+  await page.evaluate(() => localStorage.setItem('__nube_fallar_carga', '1'));
+  await page.reload(); await page.waitForSelector('#nubeLocal', { timeout: 15000 });
+  ok((await page.isVisible('#nubeLocal')) && (await page.isVisible('#nubeReintentar')) && !(await page.$eval('#p-hoy', e => e.hidden)), 'la tarjeta de error está visible con sus dos botones');
+  await page.click('#nubeLocal'); await page.waitForTimeout(400);
+  ok(!(await page.evaluate(() => VDO.nube.activa())) && !(await page.$eval('#p-hoy', e => e.hidden)) && /Solo en este navegador|Guardado/.test(await page.$eval('#estadoGuardado', e => e.textContent)), '"Trabajar en este navegador" arranca el modo local y el indicador lo dice');
+  await page.evaluate(() => localStorage.removeItem('__nube_fallar_carga'));
+  console.log('13. Un corte largo no convierte el registro en rechazado');
+  await page.evaluate(() => localStorage.setItem('__nube_espera', '5'));
+  await page.reload(); await page.waitForFunction(() => window.VDO && VDO.nube && VDO.nube.activa(), null, { timeout: 15000 }); await sinPendientes();
+  await page.evaluate(() => { let n = 0; __nube.codigo = 'unavailable'; __nube.fallar = p => p === 'contactos/c_r10' && ++n <= 10; VDO.DB.upsert('contactos', { id: 'c_r10', nombre: 'Corte Largo', segmento: 'boca' }); });
+  ok(await espera(() => __nube.store.contactos.c_r10 && Object.keys(VDO.nube.fallos()).length === 0 && /^Sincronizado/.test(VDO.nube.estado()), 20000), 'tras 10 fallos transitorios seguidos el documento se guarda y no queda marcado como rechazado (' + (await page.evaluate(() => __nube.log.filter(x => x[1] === 'contactos/c_r10').length)) + ' intentos)');
+  await page.evaluate(() => { __nube.fallar = null; localStorage.removeItem('__nube_espera'); });
+  console.log('14. Cambio externo mientras hay una escritura propia en vuelo');
+  await page.evaluate(() => { __nube.lento = 1500; VDO.DB.upsert('contactos', { id: 'c_conf', nombre: 'Mio', telefono: '+51944444444', segmento: 'boca', etapa: 'atraer', estado: 'activo', notas: '' }); });
+  await espera(() => __nube.store.contactos.c_conf, 5000); await sinPendientes();
+  await page.evaluate(() => { var c = VDO.DB.buscar('contactos', 'c_conf'); c.notas = 'llamar lunes'; VDO.DB.upsert('contactos', c); });
+  await page.waitForTimeout(450);
+  await page.evaluate(() => __nube.escribir('contactos', 'c_conf', Object.assign({}, __nube.store.contactos.c_conf, { etapa: 'calificar', respondio: true })));
+  ok(await espera(() => { var c = VDO.DB.buscar('contactos', 'c_conf'); return c && c.notas === 'llamar lunes' && c.etapa === 'calificar' && c.respondio === true; }, 8000), 'la memoria conserva lo propio (notas) y toma lo externo (etapa, respondió)');
+  ok(await espera(() => { var c = __nube.store.contactos.c_conf; return c && c.notas === 'llamar lunes' && c.etapa === 'calificar' && c.respondio === true && VDO.nube.pendientes() === 0; }, 10000), 'la nube termina con la fusión de los dos cambios');
+  await page.evaluate(() => { __nube.lento = 2; });
+  console.log('15. Documentos incompletos escritos desde fuera, presentes al cargar');
+  await page.evaluate(() => { __nube.escribir('interacciones', 'i_sinfecha', { contactoId: 'c_cache', canal: 'whatsapp', resultado: 'enviado', toque: 1 }); __nube.escribir('ventas', 'v_pre', { contactoId: 'c_cache', fecha: '2026-10-07', items: [{ productoId: 'gold700', cantidad: 20, precio: 89.9, linea: 'botellas', botellas: 1 }], estado: 'pagado' }); __nube.escribir('calendario', '2026-10-7', { foco: 'id inválido', cuotas: {} }); __nube.escribir('calendario', '2026-10-19', { foco: 'Semana Breca', cuotas: [] }); });
+  await page.reload(); await page.waitForFunction(() => window.VDO && VDO.nube && VDO.nube.activa(), null, { timeout: 15000 }); await sinPendientes();
+  ok(!/no se pudo dibujar/.test(await page.$eval('#p-hoy', e => e.textContent)) && (await page.evaluate(() => typeof VDO.DB.buscar('interacciones', 'i_sinfecha').fecha === 'string')), 'una interacción sin fecha no rompe HOY y recibe una fecha de texto');
+  const vp = await page.evaluate(() => { var v = VDO.DB.buscar('ventas', 'v_pre'); return { total: v.total, b2b: v.derivarB2B, nube: __nube.store.ventas.v_pre }; });
+  ok(Math.abs(vp.total - 1798) < 0.01 && vp.b2b === true && vp.nube.derivarB2B === true && Math.abs(vp.nube.total - 1798) < 0.01, 'una venta sin total se normaliza al cargar (20 botellas → derivar a B2B) y la versión corregida vuelve a la nube');
+  ok((await page.evaluate(() => !!__nube.store.calendario['2026-10-7'] && !VDO.DB.buscar('calendario', '2026-10-7'))), 'un día de calendario con id inválido se ignora sin borrarlo de la nube');
+  const d19 = await page.evaluate(() => { var d = VDO.DB.buscar('calendario', '2026-10-19'); return { id: d && d.id, foco: d && d.foco, cuotas: d && d.cuotas, meta: d && d.metaDia }; });
+  ok(d19.id === '2026-10-19' && d19.foco === 'Semana Breca' && d19.cuotas && !Array.isArray(d19.cuotas) && typeof d19.meta === 'number', 'un día escrito sin id y con cuotas inválidas se completa desde el plan y conserva el foco');
+  await page.evaluate(() => { __nube.borrar('calendario', '2026-10-7'); });
   console.log('10. Sin acceso a la nube: trabaja en el navegador');
   await page.evaluate(() => { window.__sinDbFlag = true; localStorage.setItem('__sinDb', '1'); });
   await page.addInitScript(() => { if (localStorage.getItem('__sinDb')) window.__sinDb = true; });

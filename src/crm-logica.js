@@ -42,7 +42,7 @@
     return fechaValida(r) ? r : '';
   }
   function fechaCorta(iso) { if (!esISO(iso)) return iso || ''; return iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4); }
-  function fechaHora(isoDT) { if (!isoDT) return ''; return fechaCorta(isoDT.slice(0, 10)) + (isoDT.length > 10 ? ' ' + isoDT.slice(11, 16) : ''); }
+  function fechaHora(isoDT) { if (!isoDT) return ''; isoDT = String(isoDT); return fechaCorta(isoDT.slice(0, 10)) + (isoDT.length > 10 ? ' ' + isoDT.slice(11, 16) : ''); }
   var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
   var MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
   function fechaLarga(iso) { if (!fechaValida(iso)) return ''; var d = new Date(iso + 'T12:00:00'); return DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear(); }
@@ -141,11 +141,13 @@
       if (!d.ui.pantalla) d.ui.pantalla = 'hoy';
       if (!d.plantillas.length) d.plantillas = clonar(D.PLANTILLAS).map(function (p) { p.activa = true; return p; });
       d.calendario = d.calendario.filter(function (x) { return fechaValida(x.fecha); });
+      d.calendario.forEach(function (x) { if (!x.id) x.id = x.fecha; if (x.cuotas != null && !esObjeto(x.cuotas)) delete x.cuotas; });
       if (!d.calendario.length) d.calendario = generarCalendario(d.config);
       else if (d.calendario.some(function (x) { return !esObjeto(x.cuotas); })) {
         var plan = {}; generarCalendario(d.config).forEach(function (x) { plan[x.fecha] = x; });
         d.calendario.forEach(function (x) { if (esObjeto(x.cuotas)) return; var ref = plan[x.fecha]; if (ref) completarObjeto(x, ref); else x.cuotas = {}; });
       }
+      d.interacciones.forEach(function (i) { if (!i.id) i.id = nuevoId('i'); if (typeof i.fecha !== 'string') i.fecha = typeof i.createdAt === 'string' ? i.createdAt : (i.fecha == null ? '' : String(i.fecha)); });
       d.calendario.sort(function (a, b) { return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0; });
       d.contactos.forEach(function (c) {
         if (!c.id) c.id = nuevoId('c'); if (!c.estado) c.estado = 'activo'; if (!c.etapa) c.etapa = 'atraer';
@@ -249,7 +251,7 @@
      última copia sincronizada y escribe solo lo que cambió; los cambios hechos en otro dispositivo o desde el chat llegan
      por onSnapshot y se aplican a la memoria. Abierto como archivo local no existe window.claude y todo sigue en
      localStorage. Los filtros y preferencias de pantalla (datos.ui) son por dispositivo en los dos modos. */
-  var NUBE = { activa: false, cargada: false, db: null, user: null, sincronizado: {}, configJson: null, pendientes: {}, enVuelo: {}, esperando: {}, intentos: {}, fallos: {}, suscripciones: {}, ultimos: {}, bloqueada: false, motivoBloqueo: '', refrescoPendiente: false, _tRefresco: null, avisos: {}, vaciaAlCargar: false };
+  var NUBE = { activa: false, cargada: false, db: null, user: null, sincronizado: {}, configJson: null, pendientes: {}, enVuelo: {}, esperando: {}, intentos: {}, fallos: {}, ultimoEscrito: {}, resincronizar: {}, suscripciones: {}, subsCaidas: {}, ultimos: {}, bloqueada: false, motivoBloqueo: '', refrescoPendiente: false, _tRefresco: null, avisos: {}, vaciaAlCargar: false, esperaBase: (window.__VDO_NUBE_ESPERA > 0 ? Number(window.__VDO_NUBE_ESPERA) : 500) };
   var CLAVE_UI = CLAVE + '-ui';
   var MAX_EN_VUELO = 4;
   function nubeDisponible() { return !!(window.claude && typeof window.claude.use === 'function'); }
@@ -264,12 +266,35 @@
     return ui;
   }
   function guardarUiLocal() { try { localStorage.setItem(CLAVE_UI, JSON.stringify({ ui: DB.datos.ui, guardado: ahoraISO() })); } catch (e) { } }
+  function deCache(snap) { return !!(snap && snap.metadata && snap.metadata.fromCache); }
+  function pendienteLocal(snap) { return !!(snap && snap.metadata && snap.metadata.hasPendingWrites); }
+  /* Devuelve { reg, crudo }: reg es el registro listo para la memoria (normalizado) y crudo el JSON del cuerpo tal como está
+     en la nube; la copia sincronizada guarda el crudo para que guardar() detecte la diferencia y reescriba el corregido. */
   function registroDesdeDoc(t, doc) {
     var b = doc.data(); if (!esObjeto(b)) return null;
-    var r = clonar(b); r[claveDe(t)] = doc.id;
-    if (t === 'ventas' && (typeof r.total !== 'number' || !Array.isArray(r.items))) { try { r = normalizarVenta(r); r.id = doc.id; } catch (e) { } }
+    if (t === 'calendario' && !fechaValida(doc.id)) { avisoUnaVez('cal-' + doc.id, 'Hay un día de calendario con identificador inválido en la nube (' + doc.id + '); se ignora.'); return null; }
+    var crudo = clonar(b); crudo[claveDe(t)] = doc.id; if (t === 'calendario') crudo.id = doc.id;
+    var r = clonar(crudo);
+    if (t === 'ventas' && (typeof r.total !== 'number' || !Array.isArray(r.items) || typeof r.derivarB2B !== 'boolean')) {
+      try { r = normalizarVenta(r); r.id = doc.id; } catch (e) { if (window.console) console.error('No se pudo normalizar ventas/' + doc.id, e); }
+    }
+    return { reg: r, crudo: JSON.stringify(crudo) };
+  }
+  function repararConfig(c) {
+    var ini = DB.configInicial();
+    Object.keys(ini).forEach(function (k) { if (c[k] == null || Array.isArray(ini[k]) !== Array.isArray(c[k]) || (esObjeto(ini[k]) && !esObjeto(c[k]))) c[k] = clonar(ini[k]); });
+    completarObjeto(c, ini); return c;
+  }
+  /* Fusión a tres vías: lo que cambió afuera gana; lo que solo cambió aquí se conserva. */
+  function fusionarRegistro(base, mio, ext) {
+    var r = clonar(ext); var b = base || {};
+    Object.keys(mio).concat(Object.keys(b)).forEach(function (c) {
+      var jm = JSON.stringify(mio[c]), jb = JSON.stringify(b[c]), je = JSON.stringify(ext[c]);
+      if (jm !== jb && je === jb) { if (jm === undefined) delete r[c]; else r[c] = clonar(mio[c]); }
+    });
     return r;
   }
+  function cerrarSuscripciones() { Object.keys(NUBE.suscripciones).forEach(function (k) { try { NUBE.suscripciones[k](); } catch (e) { } }); NUBE.suscripciones = {}; NUBE.subsCaidas = {}; }
   function conectarNube() {
     var usar = function (n) { try { return Promise.resolve(window.claude.use(n)).catch(function () { return null; }); } catch (e) { return Promise.resolve(null); } };
     return Promise.all([usar('db'), usar('user')]).then(function (r) {
@@ -279,37 +304,44 @@
     });
   }
   function suscribirTabla(t, alPrimero) {
-    var primero = true;
+    var primero = true, avisado = false;
     if (NUBE.suscripciones[t]) { try { NUBE.suscripciones[t](); } catch (e) { } }
     NUBE.suscripciones[t] = NUBE.db.collection(t).onSnapshot(function (snap) {
-      NUBE.ultimos[t] = snap;
-      if (NUBE.cargada) aplicarSnapshotTabla(t, snap, primero); else if (primero && alPrimero) alPrimero();
-      primero = false;
+      var definitivo = !deCache(snap);
+      if (definitivo && NUBE.subsCaidas[t]) { delete NUBE.subsCaidas[t]; actualizarEstadoNube(); }
+      if (NUBE.cargada) { aplicarSnapshotTabla(t, snap, primero && definitivo); if (definitivo) primero = false; return; }
+      if (!definitivo) return; // entrega de caché: se espera la definitiva antes de dar la tabla por cargada
+      NUBE.ultimos[t] = snap; primero = false;
+      if (!avisado && alPrimero) { avisado = true; alPrimero(); }
     }, function (e) { errorSuscripcion(t, e, alPrimero); });
   }
   function suscribirConfig(alPrimero) {
-    var primero = true;
+    var avisado = false;
     if (NUBE.suscripciones.config) { try { NUBE.suscripciones.config(); } catch (e) { } }
     NUBE.suscripciones.config = NUBE.db.doc('config/principal').onSnapshot(function (snap) {
+      var definitivo = !deCache(snap);
+      if (definitivo && NUBE.subsCaidas.config) { delete NUBE.subsCaidas.config; actualizarEstadoNube(); }
+      if (NUBE.cargada) { aplicarSnapshotConfig(snap); return; }
+      if (!definitivo) return;
       NUBE.ultimos.config = snap;
-      if (NUBE.cargada) aplicarSnapshotConfig(snap); else if (primero && alPrimero) alPrimero();
-      primero = false;
+      if (!avisado && alPrimero) { avisado = true; alPrimero(); }
     }, function (e) { errorSuscripcion('config', e, alPrimero); });
   }
   function errorSuscripcion(origen, e, alPrimero) {
     var code = (e && e.code) || 'unavailable';
     if (!NUBE.cargada) { if (alPrimero) alPrimero(new Error('No se pudo leer ' + origen + ' de la nube (' + code + ')')); return; }
     if (code === 'revoked' || code === 'not_granted' || code === 'capability_disabled' || code === 'capability_removed') { bloquearNube('se perdió el acceso a la nube'); return; }
-    // puente caído u otro error terminal: una nueva suscripción es la única recuperación
-    setTimeout(function () { if (NUBE.bloqueada) return; if (origen === 'config') suscribirConfig(); else suscribirTabla(origen); }, 3000 + Math.random() * 2000);
+    // puente caído u otro error terminal: una nueva suscripción es la única recuperación; espera creciente y aviso en el indicador
+    var n = NUBE.subsCaidas[origen] = (NUBE.subsCaidas[origen] || 0) + 1; actualizarEstadoNube();
+    setTimeout(function () { if (NUBE.bloqueada || !NUBE.db) return; if (origen === 'config') suscribirConfig(); else suscribirTabla(origen); }, Math.min(30000, 3000 * Math.pow(2, n - 1)) + Math.random() * 2000);
   }
   function cargarDesdeNube() {
     return new Promise(function (resolver, rechazar) {
       var faltan = TABLAS.length + 1; var terminado = false;
-      var temporizador = setTimeout(function () { if (!terminado) { terminado = true; rechazar(new Error('La nube no respondió en 25 segundos')); } }, 25000);
+      var temporizador = setTimeout(function () { if (!terminado) { terminado = true; cerrarSuscripciones(); rechazar(new Error('La nube no entregó los datos en 25 segundos')); } }, 25000);
       function listo(err) {
         if (terminado) return;
-        if (err) { terminado = true; clearTimeout(temporizador); rechazar(err); return; }
+        if (err) { terminado = true; clearTimeout(temporizador); cerrarSuscripciones(); rechazar(err); return; }
         if (--faltan === 0) { terminado = true; clearTimeout(temporizador); resolver(); }
       }
       TABLAS.forEach(function (t) { suscribirTabla(t, listo); });
@@ -318,27 +350,36 @@
   }
   function construirDesdeNube() {
     var d = { version: VERSION_ESQUEMA, creado: ahoraISO(), actualizado: ahoraISO(), config: null, ui: cargarUiLocal() };
-    var vacia = true;
+    var vacia = true; var sc = NUBE.ultimos.config;
+    if (sc && sc.exists && esObjeto(sc.data())) { NUBE.configJson = JSON.stringify(sc.data()); d.config = repararConfig(clonar(sc.data())); vacia = false; }
+    else { NUBE.configJson = null; d.config = DB.configInicial(); }
+    TABLAS.forEach(function (t) { d[t] = []; });
+    DB.datos = d; // normalizarVenta usa cfg() y hoyISO(): la memoria debe existir antes de convertir documentos
     TABLAS.forEach(function (t) {
-      var sinc = NUBE.sincronizado[t] = {}; d[t] = []; var snap = NUBE.ultimos[t];
-      ((snap && snap.docs) || []).forEach(function (doc) { var r = registroDesdeDoc(t, doc); if (!r) return; vacia = false; d[t].push(r); sinc[doc.id] = JSON.stringify(r); });
+      var sinc = NUBE.sincronizado[t] = {}; var snap = NUBE.ultimos[t];
+      ((snap && snap.docs) || []).forEach(function (doc) { var x = registroDesdeDoc(t, doc); if (!x) return; vacia = false; d[t].push(x.reg); sinc[doc.id] = x.crudo; });
     });
-    var sc = NUBE.ultimos.config;
-    if (sc && sc.exists && esObjeto(sc.data())) { d.config = clonar(sc.data()); NUBE.configJson = JSON.stringify(d.config); vacia = false; } else NUBE.configJson = null;
     NUBE.vaciaAlCargar = vacia;
-    DB.datos = d; DB.migrar();
+    DB.migrar();
   }
   function aplicarSnapshotTabla(t, snap, completo) {
     var d = DB.datos; var k = claveDe(t); var sinc = NUBE.sincronizado[t] || (NUBE.sincronizado[t] = {}); var hubo = false;
     function propio(id) { var ruta = rutaDoc(t, id); return !!(NUBE.enVuelo[ruta] || NUBE.pendientes[ruta] || NUBE.esperando[ruta]); }
     function poner(doc) {
-      var id = doc.id; if (propio(id)) return;
-      var r = registroDesdeDoc(t, doc); if (!r) return; var json = JSON.stringify(r);
-      if (sinc[id] === json) return;
-      sinc[id] = json; var i = indiceDe(d[t], k, id); if (i >= 0) d[t][i] = r; else d[t].push(r); hubo = true;
+      var id = doc.id; var ruta = rutaDoc(t, id);
+      if (pendienteLocal(doc)) return; // eco de una escritura propia aún no confirmada
+      var x = registroDesdeDoc(t, doc); if (!x) return;
+      if (sinc[id] === x.crudo) return; // sin cambios (o eco ya registrado)
+      if (x.crudo === NUBE.ultimoEscrito[ruta]) { sinc[id] = x.crudo; return; } // eco de una escritura propia ya confirmada
+      var i = indiceDe(d[t], k, id); var r = x.reg;
+      if (propio(id) && i >= 0) { // cambio externo mientras hay una escritura propia en cola: se fusiona y se vuelve a escribir
+        var base = sinc[id] !== undefined ? JSON.parse(sinc[id]) : null;
+        r = fusionarRegistro(base, d[t][i], r); NUBE.resincronizar[ruta] = true;
+      }
+      sinc[id] = x.crudo; if (i >= 0) d[t][i] = r; else d[t].push(r); hubo = true;
     }
     function quitar(id) {
-      if (propio(id) || sinc[id] === undefined) return;
+      if (propio(id) || sinc[id] === undefined) return; // si hay escritura propia en cola, esa escritura vuelve a crear el documento
       delete sinc[id]; var antes = d[t].length; d[t] = d[t].filter(function (x) { return String(x[k]) !== id; }); if (d[t].length !== antes) hubo = true;
     }
     if (completo) {
@@ -350,10 +391,14 @@
     if (hubo) cambiosDesdeFuera();
   }
   function aplicarSnapshotConfig(snap) {
-    if (NUBE.enVuelo['config/principal'] || NUBE.pendientes['config/principal'] || NUBE.esperando['config/principal']) return;
-    if (!snap.exists || !esObjeto(snap.data())) { if (NUBE.configJson === null) return; NUBE.configJson = null; DB.guardarPronto(); return; }
+    var ruta = 'config/principal'; var propia = !!(NUBE.enVuelo[ruta] || NUBE.pendientes[ruta] || NUBE.esperando[ruta]);
+    if (pendienteLocal(snap)) return;
+    if (!snap.exists || !esObjeto(snap.data())) { if (NUBE.configJson === null || propia) return; NUBE.configJson = null; DB.guardarPronto(); return; }
     var json = JSON.stringify(snap.data()); if (json === NUBE.configJson) return;
-    NUBE.configJson = json; DB.datos.config = clonar(snap.data()); cambiosDesdeFuera();
+    if (json === NUBE.ultimoEscrito[ruta]) { NUBE.configJson = json; return; }
+    var c = repararConfig(clonar(snap.data()));
+    if (propia) { c = fusionarRegistro(NUBE.configJson ? JSON.parse(NUBE.configJson) : null, DB.datos.config, c); NUBE.resincronizar[ruta] = true; }
+    NUBE.configJson = json; DB.datos.config = c; cambiosDesdeFuera();
   }
   function cambiosDesdeFuera() { clearTimeout(NUBE._tRefresco); NUBE._tRefresco = setTimeout(intentarRefresco, 300); }
   function intentarRefresco() {
@@ -404,7 +449,9 @@
   function alEscribir(ruta, p) {
     return function () {
       delete NUBE.enVuelo[ruta]; delete NUBE.intentos[ruta]; delete NUBE.fallos[ruta];
-      if (p.t === 'config') NUBE.configJson = p.json;
+      NUBE.ultimoEscrito[ruta] = p.json;
+      if (NUBE.resincronizar[ruta]) { delete NUBE.resincronizar[ruta]; DB.guardarPronto(); } // llegó un cambio externo mientras escribíamos: se vuelve a comparar y escribir la fusión
+      else if (p.t === 'config') NUBE.configJson = p.json;
       else { var sinc = NUBE.sincronizado[p.t] || (NUBE.sincronizado[p.t] = {}); if (p.json === null) delete sinc[p.id]; else sinc[p.id] = p.json; }
       procesarCola(); actualizarEstadoNube();
     };
@@ -413,13 +460,13 @@
     return function (e) {
       delete NUBE.enVuelo[ruta]; var code = (e && e.code) || 'unavailable';
       if (code === 'unavailable' || code === 'resource_exhausted') {
+        // transitorio: se reintenta sin tope con espera creciente (máximo 30 s); el registro sigue pendiente y beforeunload avisa
         var n = NUBE.intentos[ruta] = (NUBE.intentos[ruta] || 0) + 1;
-        if (n <= 6) {
-          if (!NUBE.pendientes[ruta]) NUBE.pendientes[ruta] = p;
-          NUBE.esperando[ruta] = true;
-          setTimeout(function () { delete NUBE.esperando[ruta]; procesarCola(); }, Math.min(30000, 500 * Math.pow(2, n)) + Math.random() * 500);
-          actualizarEstadoNube(); return;
-        }
+        if (!NUBE.pendientes[ruta]) NUBE.pendientes[ruta] = p; // si hubo una edición más nueva mientras esperaba, se conserva esa
+        NUBE.esperando[ruta] = true;
+        setTimeout(function () { delete NUBE.esperando[ruta]; procesarCola(); }, Math.min(30000, NUBE.esperaBase * Math.pow(2, Math.min(n, 7))) + Math.random() * NUBE.esperaBase);
+        if (n === 7) avisoUnaVez('nube-lenta', 'La nube no responde; los cambios se seguirán reintentando. Si va a cerrar la página, descargue antes un respaldo JSON.', 10000);
+        actualizarEstadoNube(); return;
       }
       if (code === 'revoked' || code === 'not_granted' || code === 'capability_disabled' || code === 'capability_removed') { if (!NUBE.pendientes[ruta]) NUBE.pendientes[ruta] = p; bloquearNube('se perdió el acceso a la nube'); return; }
       NUBE.fallos[ruta] = { json: p.json, code: code, mensaje: (e && e.message) || '' };
@@ -436,9 +483,10 @@
     if (NUBE.bloqueada) return 'NO SINCRONIZADO: ' + NUBE.motivoBloqueo;
     if (pend) return 'Sincronizando… ' + pend + (pend === 1 ? ' cambio' : ' cambios');
     if (fallos) return 'NO SINCRONIZADO: ' + fallos + (fallos === 1 ? ' registro rechazado' : ' registros rechazados');
+    if (Object.keys(NUBE.subsCaidas).length) return 'SIN CONEXIÓN EN VIVO: reintentando';
     return 'Sincronizado ' + ahoraISO().slice(11, 16);
   }
-  function actualizarEstadoNube() { setEstado(estadoNubeTexto(), NUBE.bloqueada || Object.keys(NUBE.fallos).length > 0); }
+  function actualizarEstadoNube() { setEstado(estadoNubeTexto(), NUBE.bloqueada || Object.keys(NUBE.fallos).length > 0 || Object.keys(NUBE.subsCaidas).length > 0); }
   function datosLocalesPendientes() {
     // Datos guardados en localStorage por una versión anterior de la página (o por el archivo local en este mismo origen)
     var raw = null; try { raw = localStorage.getItem(CLAVE); } catch (e) { return null; }
@@ -462,14 +510,16 @@
     qs('[data-nube="no"]', $('modalContenido')).onclick = function () { ui.localRevisado = true; DB.guardar(); cerrarModal(); };
   }
   function mostrarConectando() {
+    qsa('.pantalla').forEach(function (s) { s.hidden = s.id !== 'p-hoy'; });
     $('p-hoy').innerHTML = '<div class="tarjeta"><h3>Conectando con la nube…</h3><p class="texto2">Cargando tus datos desde claude.ai. Si tarda más de medio minuto, recarga la página.</p></div>';
     setEstado('Conectando…');
   }
   function mostrarErrorNube(e) {
-    setEstado('SIN NUBE', true);
+    setEstado('SIN NUBE', true); cerrarSuscripciones();
+    qsa('.pantalla').forEach(function (s) { s.hidden = s.id !== 'p-hoy'; });
     $('p-hoy').innerHTML = '<div class="tarjeta borde-alerta"><h3>No se pudo conectar con la nube</h3><p>' + esc((e && e.message) || 'Error desconocido') + '</p><p class="texto2">Puedes reintentar o trabajar solo en este navegador (los cambios quedarán aquí hasta que vuelvas a conectar y los subas desde Ajustes → Datos).</p><div class="acciones"><button class="btn primario" id="nubeReintentar">Reintentar</button><button class="btn" id="nubeLocal">Trabajar en este navegador</button></div></div>';
     $('nubeReintentar').onclick = function () { location.reload(); };
-    $('nubeLocal').onclick = function () { NUBE.activa = false; NUBE.cargada = false; arrancarLocal(); };
+    $('nubeLocal').onclick = function () { cerrarSuscripciones(); NUBE.db = null; NUBE.activa = false; NUBE.cargada = false; arrancarLocal(); };
   }
 
   /* =========================== Calendario =========================== */
@@ -1176,7 +1226,7 @@
     contacto.ultimoContacto = hoy; if (contacto.estado === 'dormido') contacto.estado = 'activo';
     DB.upsert('contactos', contacto);
     var ult = ultimaInteraccion(contacto.id);
-    if (ult && ult.fecha.slice(0, 10) === hoy && ult.resultado !== 'compro') { ult.resultado = 'compro'; DB.upsert('interacciones', ult); }
+    if (ult && String(ult.fecha || '').slice(0, 10) === hoy && ult.resultado !== 'compro') { ult.resultado = 'compro'; DB.upsert('interacciones', ult); }
     else registrarInteraccion({ contactoId: contacto.id, canal: 'whatsapp', toque: '', resultado: 'compro', mensaje: venta ? 'Venta ' + venta.id : '' , codigoOrigen: venta ? venta.codigoOrigen : '' });
   }
   function marcarDormido(contacto, motivo) { contacto.estado = 'dormido'; contacto.proximoToque = ''; contacto.cierrePendiente = false; contacto.toques = 0; if (!isoDe(contacto.ultimaOla)) contacto.ultimaOla = hoyISO(); /* vuelve recién en la siguiente ola */ contacto.notas = ((contacto.notas || '') + '\n' + fechaCorta(hoyISO()) + ': dormido' + (motivo ? ' · ' + motivo : '')).trim(); DB.upsert('contactos', contacto); }
@@ -1205,7 +1255,7 @@
       items.push({ tipo: tipo, contacto: c, toque: toque, vencido: c.proximoToque < fecha, plantilla: plantillaPara(c, toque, null, fecha) });
     });
     var enviadosHoy = {};
-    DB.tabla('interacciones').forEach(function (i) { if (i.fecha.slice(0, 10) === fecha && String(i.toque) === '1') { var c = porId[i.contactoId]; if (c) enviadosHoy[c.segmento] = (enviadosHoy[c.segmento] || 0) + 1; } });
+    DB.tabla('interacciones').forEach(function (i) { if (String(i.fecha || '').slice(0, 10) === fecha && String(i.toque) === '1') { var c = porId[i.contactoId]; if (c) enviadosHoy[c.segmento] = (enviadosHoy[c.segmento] || 0) + 1; } });
     if (dia) Object.keys(dia.cuotas).forEach(function (seg) {
       var cuota = Number(dia.cuotas[seg]) || 0; if (!cuota) return;
       var enCola = items.filter(function (x) { return x.contacto && x.contacto.segmento === seg && x.tipo === 'inicial'; }).length;
@@ -1221,7 +1271,7 @@
   }
   function resumenDia(fecha) {
     fecha = fecha || hoyISO(); var dia = diaCalendario(fecha);
-    var inter = DB.tabla('interacciones').filter(function (i) { return i.fecha.slice(0, 10) === fecha; });
+    var inter = DB.tabla('interacciones').filter(function (i) { return String(i.fecha || '').slice(0, 10) === fecha; });
     var ventas = DB.tabla('ventas').filter(function (v) { return (v.fechaCierre || v.fecha) === fecha && ['pagado', 'entregado'].indexOf(v.estado) >= 0 && !v.derivarB2B; });
     var cuotaTotal = dia ? Object.keys(dia.cuotas).reduce(function (s, k) { return s + (Number(dia.cuotas[k]) || 0); }, 0) : 0;
     return { fecha: fecha, dia: dia, enviados: inter.filter(function (i) { return String(i.toque) !== '' || i.resultado === 'enviado'; }).length, respondieron: inter.filter(function (i) { return i.resultado === 'respondio' || i.resultado === 'compro'; }).length, compraron: ventas.length, ventaDia: ventas.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0), metaDia: dia ? dia.metaDia : 0, cuotaDia: dia ? dia.cuotaDia : 0, cuotaContactos: cuotaTotal };
@@ -1405,6 +1455,7 @@
   }
   function arrancarLocal() {
     DB.cargar();
+    setEstado(nubeDisponible() ? 'Solo en este navegador' : 'Guardado ' + String(DB.datos.actualizado || '').slice(11, 16));
     if (DB.datos.ui.primeraVez) { DB.cargarPrueba(); DB.datos.ui.primeraVez = false; DB.guardar(); }
     arrancar();
   }

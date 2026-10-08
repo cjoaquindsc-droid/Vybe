@@ -21,7 +21,8 @@ let fallos = 0; function ok(c, m) { if (c) console.log('  ✓ ' + m); else { fal
   ok((await page.$$('#pipeTablero .pipe-card')).length === 1, 'filtro por segmento deja una tarjeta');
   await page.selectOption('.pipe-filtros select[name="segmento"]', ''); await page.waitForTimeout(100);
   await page.check('.pipe-filtros input[name="vencidos"]'); await page.waitForTimeout(100);
-  ok((await page.$$('#pipeTablero .pipe-card')).length === 2, 'filtro de vencidos deja dos tarjetas');
+  const vencidosEsperados = await page.evaluate(() => { var hoy = VDO.util.hoyISO(); return VDO.DB.tabla('contactos').filter(c => c.estado === 'activo' && c.proximoToque && c.proximoToque < hoy).length; });
+  ok((await page.$$('#pipeTablero .pipe-card')).length === vencidosEsperados && vencidosEsperados >= 2, 'filtro de vencidos deja solo las tarjetas con próximo toque anterior a hoy (' + vencidosEsperados + ')');
   await page.uncheck('.pipe-filtros input[name="vencidos"]'); await page.waitForTimeout(100);
   console.log('2. Mover de etapa');
   await page.click('.pipe-card[data-id="c_prueba_02"] [data-pipe="mover"][data-dir="1"]'); await page.waitForTimeout(100);

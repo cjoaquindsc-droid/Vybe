@@ -138,7 +138,7 @@
       h += '<rect class="fondo' + (d.fecha === hoy ? ' hoy-fondo' : '') + '" x="' + x0.toFixed(1) + '" y="' + padS + '" width="' + ranura.toFixed(1) + '" height="' + (alto + padB) + '" fill="transparent"></rect>';
       h += barraRedonda(xMeta, base - hMeta, anchoBarra, hMeta, 'meta').replace('<path ', '<path fill="var(--cal-meta)" ');
       h += barraRedonda(xReal, base - hReal, anchoBarra, hReal, 'real').replace('<path ', '<path fill="var(--cal-real)" ');
-      var num = parseInt(d.fecha.slice(8, 10), 10);
+      var num = parseInt(String(d.fecha || '').slice(8, 10), 10);
       if (etiquetas[i]) h += '<text x="' + (x0 + ranura / 2).toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle"' + (d.fecha === hoy ? ' fill="var(--oro-claro)"' : '') + '>' + num + '</text>';
       h += '</g>';
     });
