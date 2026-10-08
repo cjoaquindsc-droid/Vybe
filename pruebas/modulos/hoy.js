@@ -97,7 +97,7 @@ async function prepararDatos(page) {
   const hrefEditado = await page.$eval('.hoy-card[data-id="c_prueba_02"] a[data-accion-hoy="abrir"]', el => el.getAttribute('href'));
   ok(hrefEditado.indexOf(encodeURIComponent('texto editado a mano')) >= 0, 'al editar el mensaje se actualiza el enlace');
   const correoBtn = await page.$eval('.hoy-card[data-id="c_hoy_correo"] a[data-accion-hoy="abrir"]', el => ({ t: el.textContent, h: el.getAttribute('href') }));
-  ok(/Copiar y abrir correo/.test(correoBtn.t) && correoBtn.h.indexOf('mailto:mruiz%40ejemplo.pe?subject=') === 0 && correoBtn.h.indexOf('Scotiabank') > 0, 'sin teléfono: "Copiar y abrir correo" con mailto, asunto y cuerpo');
+  ok(/Copiar y abrir correo/.test(correoBtn.t) && correoBtn.h.indexOf('mailto:mruiz@ejemplo.pe?subject=') === 0 && correoBtn.h.indexOf('Scotiabank') > 0, 'sin teléfono: "Copiar y abrir correo" con mailto, asunto y cuerpo');
   ok(!!(await page.$('.hoy-card[data-id="c_hoy_correo"] input[data-campo="asunto"]')), 'la plantilla de correo muestra el asunto editable');
   const opciones = await page.$$eval('.hoy-card[data-id="c_hoy_corp"] select[data-campo="plantilla"] option', os => os.map(o => o.value));
   ok(opciones.indexOf('corporativo_t1') >= 0 && opciones.indexOf('corporativo_t1_correo') >= 0 && opciones.indexOf('propuesta') >= 0 && opciones.indexOf('boca_t1') < 0, 'select con las plantillas activas del segmento y de todos (*), sin las de otros segmentos');

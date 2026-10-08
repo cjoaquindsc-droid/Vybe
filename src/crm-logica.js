@@ -346,7 +346,7 @@
     return { texto: conLeyendas(rellenar(plantilla.texto, vars), plantilla), asunto: rellenar(plantilla.asunto || '', vars) };
   }
   function urlWhatsApp(telefono, texto) { var d = telefonoDigitos(telefono); return 'https://wa.me/' + d + (texto ? '?text=' + encodeURIComponent(texto) : ''); }
-  function urlCorreo(correo, asunto, texto) { return 'mailto:' + encodeURIComponent(correo || '') + '?subject=' + encodeURIComponent(asunto || '') + '&body=' + encodeURIComponent(texto || ''); }
+  function urlCorreo(correo, asunto, texto) { return 'mailto:' + encodeURIComponent(String(correo || '').trim()).replace(/%40/g, '@').replace(/%2C/g, ',').replace(/%3B/g, ';') + '?subject=' + encodeURIComponent(asunto || '') + '&body=' + encodeURIComponent(texto || ''); }
   function copiar(texto) {
     if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(texto).then(function () { return true; }, function () { return copiarFallback(texto); });
     return Promise.resolve(copiarFallback(texto));

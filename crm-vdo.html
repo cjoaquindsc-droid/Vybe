@@ -433,6 +433,38 @@ textarea { resize: vertical; }
   .hoy-fecha { min-width: 0; }
 }
 
+/* ---- módulo: metricas.css ---- */
+/* metricas.css · Pantalla MÉTRICAS · barras HTML con colores validados sobre #151515: real #b38e22, plan #4f8ad0 */
+.met-periodo { align-items: center; gap: 8px; }
+.met-periodo select { width: auto; min-width: 160px; }
+.met-alerta.alerta { border-color: #6b3a33; }
+.met-alerta.aviso { border-color: var(--oro-suave); }
+.met-alerta.ok { border-color: #2f5a4a; }
+.met-barra { display: inline-block; width: 100%; max-width: 160px; height: 8px; background: var(--superficie2); border-radius: 4px; overflow: hidden; vertical-align: middle; }
+.met-barra i { display: block; height: 100%; border-radius: 4px; }
+.met-barra i.real { background: #b38e22; }
+.met-barra i.plan { background: #4f8ad0; }
+.met-comp { display: grid; grid-template-columns: 56px minmax(80px, 1fr); gap: 2px 8px; align-items: center; font-variant-numeric: tabular-nums; }
+.met-comp > span:first-child { grid-row: 1 / 3; font-weight: 600; }
+.met-comp .bien { color: var(--ok); } .met-comp .mal { color: var(--alerta); } .met-comp .aviso { color: var(--aviso); }
+.met-comp small { grid-column: 2; }
+.met-leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin-top: 10px; font-size: 12.5px; color: var(--texto2); }
+.met-leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.met-leyenda i.real { background: #b38e22; } .met-leyenda i.plan { background: #4f8ad0; }
+.met-embudo { display: grid; gap: 8px; }
+.met-emb-fila { display: grid; grid-template-columns: 110px minmax(80px, 1fr) 60px 50px; gap: 8px; align-items: center; font-size: 13px; }
+.met-emb-fila .met-barra { max-width: none; height: 12px; }
+.met-emb-fila b { text-align: right; font-variant-numeric: tabular-nums; }
+.kpi .val small { font-family: var(--cuerpo); font-size: 12px; color: var(--texto3); letter-spacing: 0; }
+@media (max-width: 820px) {
+  .met-tabla thead { display: none; }
+  .met-tabla tr { display: block; border-bottom: 1px solid var(--borde); padding: 6px 0; }
+  .met-tabla td, .met-tabla td.num { display: block; border: none; padding: 2px 8px; text-align: left; }
+  .met-tabla td[data-label]::before { content: attr(data-label) " · "; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--texto3); }
+  .met-emb-fila { grid-template-columns: 90px 1fr 50px 44px; }
+}
+.met-ancho { grid-column: 1 / -1; }
+
 /* ---- módulo: pipeline.css ---- */
 /* ============================================================================
    pipeline.css · Pantalla PIPELINE · tableros kanban (personas y cuentas),
@@ -573,6 +605,38 @@ textarea { resize: vertical; }
   .pipe-tabla td.acciones-fila { text-align: left; padding-top: 6px; }
   .pipe-tabla td.acciones-fila .btn { min-height: 36px; }
 }
+
+/* ---- módulo: plantillas.css ---- */
+/* plantillas.css · Pantalla PLANTILLAS */
+.pl-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.pl-lateral { position: sticky; top: 70px; }
+.pl-item { border-top: 1px solid var(--borde); padding: 10px 0; }
+.pl-item:first-of-type { border-top: none; }
+.pl-item.inactiva { opacity: .55; }
+.pl-cab { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pl-texto { color: var(--texto2); font-size: 13px; margin: 6px 0 0; white-space: pre-line; }
+.pl-cobertura td { text-align: center; }
+.pl-cobertura td:first-child { text-align: left; }
+.pl-cobertura .pl-ok { color: var(--ok); font-weight: 700; }
+.pl-cobertura .pl-falta { color: var(--aviso); }
+.pl-editor { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, 1fr); gap: 18px; align-items: start; }
+.pl-previa h4 { margin-top: 0; }
+.pl-vars { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.pl-vars .btn.chico { text-transform: none; letter-spacing: 0; font-family: var(--mono); font-size: 11px; padding: 3px 7px; }
+.pl-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--texto2); }
+.pl-check input { width: 18px; height: 18px; accent-color: var(--oro); }
+#plAviso .mal { color: var(--alerta); }
+@media (max-width: 1000px) { .pl-grid { grid-template-columns: 1fr; } .pl-lateral { position: static; } }
+@media (max-width: 820px) { .pl-editor { grid-template-columns: 1fr; } .pl-filtros { grid-template-columns: 1fr 1fr; } .pl-filtros input[type="search"] { grid-column: 1 / -1; } }
+
+/* ---- módulo: reporte.css ---- */
+/* reporte.css · Pantalla REPORTE SEMANAL */
+.rep-texto { white-space: pre-wrap; font: 13px/1.5 var(--mono); color: var(--texto); background: var(--superficie2); border-left: 2px solid var(--oro-suave); padding: 14px 16px; border-radius: var(--radio); margin: 0; overflow-wrap: anywhere; }
+.rep-barra .form-grid { max-width: 420px; }
+.rep-hist { list-style: none; margin: 0; padding: 0; }
+.rep-hist li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 0; border-bottom: 1px solid var(--borde); font-size: 13.5px; }
+.rep-hist li:last-child { border-bottom: none; }
+.rep-hist .acciones { margin: 0; margin-left: auto; }
 
 /* ---- módulo: ventas.css ---- */
 /* ============================================================================
@@ -1377,7 +1441,7 @@ window.VDO_DATOS = (function () {
     return { texto: conLeyendas(rellenar(plantilla.texto, vars), plantilla), asunto: rellenar(plantilla.asunto || '', vars) };
   }
   function urlWhatsApp(telefono, texto) { var d = telefonoDigitos(telefono); return 'https://wa.me/' + d + (texto ? '?text=' + encodeURIComponent(texto) : ''); }
-  function urlCorreo(correo, asunto, texto) { return 'mailto:' + encodeURIComponent(correo || '') + '?subject=' + encodeURIComponent(asunto || '') + '&body=' + encodeURIComponent(texto || ''); }
+  function urlCorreo(correo, asunto, texto) { return 'mailto:' + encodeURIComponent(String(correo || '').trim()).replace(/%40/g, '@').replace(/%2C/g, ',').replace(/%3B/g, ';') + '?subject=' + encodeURIComponent(asunto || '') + '&body=' + encodeURIComponent(texto || ''); }
   function copiar(texto) {
     if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(texto).then(function () { return true; }, function () { return copiarFallback(texto); });
     return Promise.resolve(copiarFallback(texto));
@@ -3214,6 +3278,168 @@ window.VDO_DATOS = (function () {
 
 </script>
 <script>
+/* ---- módulo: metricas.js ---- */
+/* ============================================================================
+   metricas.js · Pantalla MÉTRICAS (parte 5) · Bodegas Viñas de Oro / The Pisco Room
+   Tasas reales por segmento contra el plan, tickets, venta por código de origen,
+   gancho y ola, ranking de embajadores, embudo del periodo y cortes de control
+   con alerta de ritmo. Expone V.metricas.alertaCorte() para HOY y el reporte.
+   Gráficas en HTML/SVG sin librerías; colores validados sobre el fondo oscuro:
+   real #b38e22 (dorado), plan #4f8ad0 (azul).
+   ========================================================================== */
+(function () {
+  'use strict';
+  var V = window.VDO, U = V.util, UI = V.ui, R = V.reglas, DB = V.DB, cfg = V.cfg;
+  var estado = { enlazado: false };
+
+  /* =========================== Periodo =========================== */
+  function filtros() {
+    var f = DB.datos.ui.filtros.metricas;
+    if (!f || typeof f !== 'object') { f = { tipo: 'trimestre', mes: U.hoyISO().slice(0, 7), semana: lunesDe(U.hoyISO()), ola: R.olaDe(U.hoyISO()) }; DB.datos.ui.filtros.metricas = f; }
+    return f;
+  }
+  function lunesDe(iso) { var d = U.diaSemana(iso); return U.sumarDias(iso, d === 0 ? -6 : 1 - d); }
+  function periodoPlan() { var p = cfg().empresa.periodo || {}; return { desde: p.desde || '2026-10-01', hasta: p.hasta || '2026-12-31' }; }
+  function rango() {
+    var f = filtros(); var P = periodoPlan();
+    if (f.tipo === 'mes') { var m = /^\d{4}-\d{2}$/.test(f.mes) ? f.mes : U.hoyISO().slice(0, 7); var ini = m + '-01'; return { desde: ini, hasta: U.sumarDias(U.sumarDias(ini, 32).slice(0, 7) + '-01', -1), nombre: U.nombreMes(m) }; }
+    if (f.tipo === 'semana') { var l = U.isoDe(f.semana) || lunesDe(U.hoyISO()); return { desde: l, hasta: U.sumarDias(l, 5), nombre: 'semana del ' + U.fechaCorta(l) + ' al ' + U.fechaCorta(U.sumarDias(l, 5)) }; }
+    if (f.tipo === 'ola') { var o = cfg().olas.filter(function (x) { return x.n === Number(f.ola); })[0] || cfg().olas[0]; return { desde: o.desde, hasta: o.hasta, nombre: o.nombre }; }
+    return { desde: P.desde, hasta: P.hasta, nombre: 'trimestre (' + U.fechaCorta(P.desde) + ' al ' + U.fechaCorta(P.hasta) + ')' };
+  }
+  function en(fecha, r) { fecha = U.isoDe(fecha); return !!fecha && fecha >= r.desde && fecha <= r.hasta; }
+  function fechaVenta(v) { return U.isoDe(v.fechaCierre) || U.isoDe(v.fecha) || ''; }
+  function cuenta(v) { return ['pagado', 'entregado'].indexOf(v.estado) >= 0 && !v.derivarB2B; }
+
+  /* =========================== Cálculos =========================== */
+  function datos(r) {
+    r = r || rango(); var porId = {}; DB.tabla('contactos').forEach(function (c) { porId[c.id] = c; });
+    var inter = DB.tabla('interacciones').filter(function (i) { return en(String(i.fecha || '').slice(0, 10), r); });
+    var ventas = DB.tabla('ventas').filter(function (v) { return cuenta(v) && en(fechaVenta(v), r); });
+    var oportunidades = DB.tabla('ventas').filter(function (v) { return v.estado !== 'perdido' && en(fechaVenta(v), r); });
+    var cont = {}, resp = {}, comp = {}, prop = {};
+    var hayToque1 = inter.some(function (i) { return String(i.toque) === '1'; });
+    inter.forEach(function (i) { if (!i.contactoId) return; if (String(i.toque) === '1' || (!hayToque1 && i.resultado === 'enviado')) cont[i.contactoId] = 1; if (i.resultado === 'respondio' || i.resultado === 'compro') resp[i.contactoId] = 1; });
+    ventas.forEach(function (v) { if (v.contactoId) { comp[v.contactoId] = 1; cont[v.contactoId] = cont[v.contactoId] || 1; } });
+    oportunidades.forEach(function (v) { if (v.contactoId) prop[v.contactoId] = 1; });
+    Object.keys(cont).forEach(function (id) { var c = porId[id]; if (c && V.ORDEN_ETAPAS.indexOf(c.etapa) >= V.ORDEN_ETAPAS.indexOf('proponer')) prop[id] = 1; });
+    var porSeg = {};
+    cfg().segmentos.forEach(function (s) { porSeg[s.codigo] = { segmento: s, contactados: 0, respondieron: 0, propuestas: 0, compraron: 0, venta: 0, ventas: 0 }; });
+    function seg(id) { var c = porId[id]; var k = c && porSeg[c.segmento] ? c.segmento : null; return k; }
+    Object.keys(cont).forEach(function (id) { var k = seg(id); if (k) { porSeg[k].contactados++; if (resp[id]) porSeg[k].respondieron++; if (prop[id]) porSeg[k].propuestas++; if (comp[id]) porSeg[k].compraron++; } });
+    ventas.forEach(function (v) { var k = (v.contactoId && seg(v.contactoId)) || (porSeg[v.segmento] ? v.segmento : null); if (k) { porSeg[k].venta += Number(v.total) || 0; porSeg[k].ventas++; } });
+    var tot = { contactados: Object.keys(cont).length, respondieron: Object.keys(resp).filter(function (id) { return cont[id]; }).length, propuestas: Object.keys(prop).filter(function (id) { return cont[id]; }).length, compraron: Object.keys(comp).length, venta: ventas.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0), ventas: ventas.length };
+    var bot = ventas.filter(function (v) { return v.linea !== 'experiencia'; }), exp = ventas.filter(function (v) { return v.linea === 'experiencia'; });
+    function suma(l) { return l.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0); }
+    function agrupar(lista, clave) { var m = {}; lista.forEach(function (v) { var k = clave(v) || '(sin dato)'; if (!m[k]) m[k] = { clave: k, n: 0, total: 0 }; m[k].n++; m[k].total += Number(v.total) || 0; }); return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return b.total - a.total; }); }
+    return {
+      rango: r, porSeg: porSeg, tot: tot, ventas: ventas, inter: inter,
+      ticket: { general: ventas.length ? tot.venta / ventas.length : 0, botellas: bot.length ? suma(bot) / bot.length : 0, experiencia: exp.length ? suma(exp) / exp.length : 0, vBot: suma(bot), vExp: suma(exp) },
+      porCodigo: agrupar(ventas, function (v) { return String(v.codigoOrigen || '').trim().toUpperCase(); }),
+      porGancho: agrupar(ventas, function (v) { var g = cfg().ganchos.filter(function (x) { return x.id === v.gancho; })[0]; return g ? g.nombre : (v.gancho || ''); }),
+      porOla: agrupar(ventas, function (v) { return 'Ola ' + R.olaDe(fechaVenta(v)); })
+    };
+  }
+  function ranking() {
+    if (V.modulos && V.modulos.ventas && V.modulos.ventas.rankingEmbajadores) return V.modulos.ventas.rankingEmbajadores().map(function (x) { return { nombre: x.e.nombre, codigo: x.e.codigo, ciudad: x.e.ciudad, n: x.n, vendido: x.vendido, comision: x.comision }; });
+    var P = periodoPlan(); var ventas = DB.tabla('ventas').filter(function (v) { return cuenta(v) && en(fechaVenta(v), P); });
+    return DB.tabla('embajadores').map(function (e) { var vs = ventas.filter(function (v) { return v.embajadorId === e.id || (e.codigo && String(v.codigoOrigen || '').toUpperCase() === String(e.codigo).toUpperCase()); }); var t = vs.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0); return { nombre: e.nombre, codigo: e.codigo, ciudad: e.ciudad, n: vs.length, vendido: t, comision: Math.round(t * (cfg().reglas.comisionBase || 0.1) * 100) / 100 }; }).sort(function (a, b) { return b.vendido - a.vendido; });
+  }
+  function cortes() {
+    var hoy = U.hoyISO(); var cal = DB.tabla('calendario'); var P = periodoPlan();
+    var todas = DB.tabla('ventas').filter(function (v) { return cuenta(v) && en(fechaVenta(v), P); });
+    return cfg().cortes.map(function (c) {
+      var meta = cal.filter(function (d) { return d.fecha <= c.fecha; }).reduce(function (s, d) { return s + (Number(d.metaDia) || 0); }, 0);
+      var cuota = cal.filter(function (d) { return d.fecha <= c.fecha; }).reduce(function (s, d) { return s + (Number(d.cuotaDia) || 0); }, 0);
+      var real = todas.filter(function (v) { return fechaVenta(v) <= c.fecha; }).reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
+      var estadoC = c.fecha > hoy ? 'pendiente' : real >= cuota ? 'cumplido' : 'no_cumplido';
+      return { fecha: c.fecha, nombre: c.nombre, meta: meta, cuota: cuota, real: real, brecha: real - meta, estado: estadoC };
+    });
+  }
+  function alertaCorte() {
+    var hoy = U.hoyISO(); var cal = DB.tabla('calendario'); var P = periodoPlan(); var M = cfg().metas;
+    var proximo = cfg().cortes.filter(function (c) { return c.fecha >= hoy; })[0] || cfg().cortes[cfg().cortes.length - 1]; if (!proximo) return null;
+    var todas = DB.tabla('ventas').filter(function (v) { return cuenta(v) && en(fechaVenta(v), P); });
+    var acum = todas.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
+    var transcurridos = cal.filter(function (d) { return d.fecha <= hoy; }), restantes = cal.filter(function (d) { return d.fecha > hoy; });
+    var metaHoy = transcurridos.reduce(function (s, d) { return s + (Number(d.metaDia) || 0); }, 0), cuotaHoy = transcurridos.reduce(function (s, d) { return s + (Number(d.cuotaDia) || 0); }, 0);
+    var metaTotal = Number(M.total) || Object.keys(M.proyeccion || {}).reduce(function (s, k) { return s + (Number(M.proyeccion[k]) || 0); }, 0);
+    var ritmoActual = transcurridos.length ? acum / transcurridos.length : 0;
+    var ritmoRequerido = restantes.length ? Math.max(0, metaTotal - acum) / restantes.length : 0;
+    var d = datos({ desde: P.desde, hasta: P.hasta });
+    var ticket = d.ticket.general || 215; var tasa = d.tot.contactados ? Math.max(0.01, d.tot.compraron / d.tot.contactados) : 0.05;
+    var contactosReq = Math.ceil(ritmoRequerido / (ticket * tasa)); var contactosAct = transcurridos.length ? Math.round(d.tot.contactados / transcurridos.length) : 0;
+    var brecha = acum - metaHoy; var nivel = brecha < 0 ? (acum < cuotaHoy ? 'alerta' : 'aviso') : 'ok';
+    var texto = (brecha < 0 ? 'Vas ' + U.soles(-brecha) + ' por debajo de la meta acumulada a hoy (' + U.soles(metaHoy) + ').' : 'Vas ' + U.soles(brecha) + ' por encima de la meta acumulada a hoy.') + ' Próximo corte: ' + U.fechaCorta(proximo.fecha) + ' (' + proximo.nombre + '). Ritmo actual ' + U.soles(ritmoActual) + '/día; para cerrar el trimestre hacen falta ' + U.soles(ritmoRequerido) + '/día, unos ' + U.entero(contactosReq) + ' contactos nuevos por día' + (contactosAct ? ' (hoy promedias ' + U.entero(contactosAct) + ')' : '') + '.';
+    return { corte: proximo.nombre, fecha: proximo.fecha, acumulado: acum, metaALaFecha: metaHoy, cuotaALaFecha: cuotaHoy, brecha: brecha, ritmoActual: ritmoActual, ritmoRequerido: ritmoRequerido, ticket: ticket, tasaCompra: tasa, contactosDiaRequeridos: contactosReq, contactosDiaActuales: contactosAct, diasRestantes: restantes.length, nivel: nivel, texto: texto };
+  }
+
+  /* =========================== Gráficas (HTML) =========================== */
+  function barra(valor, max, cls) { var p = max > 0 ? Math.min(100, valor / max * 100) : 0; return '<span class="met-barra"><i class="' + cls + '" style="width:' + p.toFixed(1) + '%"></i></span>'; }
+  function tasa(n, d) { return d ? n / d : null; }
+  function deltaCls(real, plan) { if (real == null || plan == null) return ''; if (real >= plan) return 'bien'; if (real < plan * 0.7) return 'mal'; return 'aviso'; }
+
+  /* =========================== Render =========================== */
+  function render() {
+    enlazar();
+    var f = filtros(); var r = rango(); var d = datos(r); var T = cfg().tasasPlan; var al = alertaCorte(); var cs = cortes(); var rk = ranking();
+    var meses = Object.keys(cfg().metas.proyeccion || {}).sort();
+    var h = '<div class="cabecera-pantalla"><h2>Métricas</h2><p class="sub">' + U.esc(r.nombre) + '</p><div class="acciones"><button type="button" class="btn chico" data-met="csv-tasas">Exportar tasas CSV</button><button type="button" class="btn chico" data-met="csv-codigos">Exportar códigos CSV</button></div>' +
+      '<nav class="subnav met-periodo">' + [['trimestre', 'Trimestre'], ['mes', 'Mes'], ['semana', 'Semana'], ['ola', 'Ola']].map(function (x) { return '<button type="button" class="btn chico' + (f.tipo === x[0] ? ' activa' : '') + '" data-met="tipo" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+      (f.tipo === 'mes' ? '<select data-met="mes">' + UI.opciones(meses.map(function (m) { return { valor: m, texto: U.nombreMes(m) }; }), f.mes) + '</select>' : '') +
+      (f.tipo === 'semana' ? '<button type="button" class="btn chico" data-met="semana" data-v="-7">◀</button><span class="texto2">' + U.esc(U.fechaCorta(r.desde)) + ' – ' + U.esc(U.fechaCorta(r.hasta)) + '</span><button type="button" class="btn chico" data-met="semana" data-v="7">▶</button>' : '') +
+      (f.tipo === 'ola' ? '<select data-met="ola">' + UI.opciones(cfg().olas.map(function (o) { return { valor: String(o.n), texto: o.nombre }; }), String(f.ola)) + '</select>' : '') + '</nav></div>';
+    // Alerta de corte
+    if (al) h += '<div class="tarjeta met-alerta ' + al.nivel + '"><div class="fila-sup"><span class="etiqueta">Corte de control</span><span class="pill' + (al.nivel === 'ok' ? ' ok' : ' alerta') + '">' + (al.nivel === 'ok' ? 'En meta' : al.nivel === 'aviso' ? 'Bajo la proyección' : 'Bajo la cuota') + '</span></div><p id="metAlertaTexto">' + U.esc(al.texto) + '</p><div class="kpis">' +
+      kpi('Acumulado a hoy', U.soles(al.acumulado)) + kpi('Meta acumulada a hoy', U.soles(al.metaALaFecha)) + kpi('Cuota acumulada a hoy', U.soles(al.cuotaALaFecha)) + kpi('Ritmo actual', U.soles(al.ritmoActual) + '<small>/día</small>') + kpi('Ritmo requerido', U.soles(al.ritmoRequerido) + '<small>/día</small>', al.ritmoRequerido > al.ritmoActual ? 'mal' : '') + kpi('Contactos/día requeridos', U.entero(al.contactosDiaRequeridos) + '<small> vs ' + U.entero(al.contactosDiaActuales) + ' hoy</small>') + '</div><p class="texto3">Contactos/día requeridos = ritmo requerido ÷ (ticket promedio ' + U.soles(al.ticket) + ' × tasa de compra ' + U.pct(al.tasaCompra, 1) + '). Días de atención restantes: ' + al.diasRestantes + '.</p></div>';
+    // Tasas por segmento
+    h += '<div class="tarjeta"><h3>Tasas por segmento vs plan · ' + U.esc(r.nombre) + '</h3><div class="tabla-scroll"><table class="tabla compacta met-tabla" id="metTasas"><thead><tr><th>Segmento</th><th class="num">Contactados</th><th class="num">Respondieron</th><th class="num">Propuestas</th><th class="num">Compraron</th><th>Respuesta real / plan</th><th>Compra real / plan</th><th class="num">Venta</th></tr></thead><tbody>';
+    cfg().segmentos.forEach(function (s) {
+      var x = d.porSeg[s.codigo]; var p = T[s.codigo] || {}; var tr = tasa(x.respondieron, x.contactados), tc = tasa(x.compraron, x.contactados), tp = tasa(x.propuestas, x.contactados);
+      h += '<tr data-seg="' + U.attr(s.codigo) + '"><td data-label="Segmento"><span class="chip seg-' + U.esc(s.codigo) + '">' + U.esc(s.nombre) + '</span></td><td data-label="Contactados" class="num">' + U.entero(x.contactados) + '</td><td data-label="Respondieron" class="num">' + U.entero(x.respondieron) + '</td><td data-label="Propuestas" class="num">' + U.entero(x.propuestas) + (tp != null ? ' <small class="texto3">' + U.pct(tp, 0) + '</small>' : '') + '</td><td data-label="Compraron" class="num">' + U.entero(x.compraron) + '</td>' +
+        '<td data-label="Respuesta"><div class="met-comp"><span class="' + deltaCls(tr, p.respuesta) + '">' + (tr == null ? '–' : U.pct(tr, 1)) + '</span>' + barra(tr || 0, 1, 'real') + barra(p.respuesta || 0, 1, 'plan') + '<small class="texto3">plan ' + U.pct(p.respuesta || 0, 0) + '</small></div></td>' +
+        '<td data-label="Compra"><div class="met-comp"><span class="' + deltaCls(tc, p.compra) + '">' + (tc == null ? '–' : U.pct(tc, 1)) + '</span>' + barra(tc || 0, 0.25, 'real') + barra(p.compra || 0, 0.25, 'plan') + '<small class="texto3">plan ' + U.pct(p.compra || 0, 1) + '</small></div></td>' +
+        '<td data-label="Venta" class="num">' + U.soles(x.venta) + '</td></tr>';
+    });
+    h += '<tr class="total"><td>Total</td><td class="num">' + U.entero(d.tot.contactados) + '</td><td class="num">' + U.entero(d.tot.respondieron) + '</td><td class="num">' + U.entero(d.tot.propuestas) + '</td><td class="num">' + U.entero(d.tot.compraron) + '</td><td>' + (d.tot.contactados ? U.pct(d.tot.respondieron / d.tot.contactados, 1) : '–') + '</td><td>' + (d.tot.contactados ? U.pct(d.tot.compraron / d.tot.contactados, 1) : '–') + '</td><td class="num">' + U.soles(d.tot.venta) + '</td></tr></tbody></table></div>' +
+      '<div class="met-leyenda"><span><i class="real"></i>Real</span><span><i class="plan"></i>Plan</span><span class="texto3">Contactado = recibió el primer toque en el periodo; compra = contactos con venta pagada o entregada (no B2B). Verde: en plan; ámbar: entre 70 % y 100 % del plan; rojo: por debajo del 70 %.</span></div></div>';
+    // Embudo
+    var emb = [['Contactados', d.tot.contactados], ['Respondieron', d.tot.respondieron], ['Propuestas', d.tot.propuestas], ['Compraron', d.tot.compraron]];
+    h += '<div class="grid-2"><div class="tarjeta"><h3>Embudo del periodo</h3><div class="met-embudo">' + emb.map(function (e) { return '<div class="met-emb-fila"><span>' + e[0] + '</span>' + barra(e[1], emb[0][1] || 1, 'real') + '<b>' + U.entero(e[1]) + '</b><small class="texto3">' + (emb[0][1] ? U.pct(e[1] / emb[0][1], 0) : '–') + '</small></div>'; }).join('') + '</div></div>';
+    // Tickets y mix
+    var totLinea = d.ticket.vBot + d.ticket.vExp;
+    h += '<div class="tarjeta"><h3>Ticket promedio y mix</h3><div class="kpis">' + kpi('Ticket general', U.soles(d.ticket.general), '', 'metTicket') + kpi('Ticket botellas', U.soles(d.ticket.botellas)) + kpi('Ticket experiencia', U.soles(d.ticket.experiencia)) + '</div>' +
+      '<div class="met-emb-fila"><span>Mix real</span><span class="met-barra"><i class="real" style="width:' + (totLinea ? d.ticket.vBot / totLinea * 100 : 0).toFixed(1) + '%"></i></span><b>' + (totLinea ? U.pct(d.ticket.vBot / totLinea, 0) + ' / ' + U.pct(d.ticket.vExp / totLinea, 0) : '–') + '</b></div><div class="met-emb-fila"><span>Objetivo</span><span class="met-barra"><i class="plan" style="width:' + ((cfg().metas.mix.botellas || 0.6) * 100).toFixed(0) + '%"></i></span><b>' + U.pct(cfg().metas.mix.botellas, 0) + ' / ' + U.pct(cfg().metas.mix.experiencia, 0) + '</b></div><p class="texto3">Botellas / experiencia por venta. Ticket por segmento:</p><div class="tabla-scroll"><table class="tabla compacta"><tbody>' + cfg().segmentos.map(function (s) { var x = d.porSeg[s.codigo]; return x.ventas ? '<tr><td>' + U.esc(s.nombre) + '</td><td class="num">' + U.soles(x.venta / x.ventas) + '</td><td class="num texto3">' + x.ventas + ' ventas</td></tr>' : ''; }).join('') + '</tbody></table></div></div></div>';
+    // Códigos, ganchos, olas, embajadores
+    function tablaAgrupada(titulo, lista, id) { var max = lista.length ? lista[0].total : 0; return '<div class="tarjeta"><h3>' + titulo + '</h3>' + (lista.length ? '<div class="tabla-scroll"><table class="tabla compacta met-tabla" id="' + id + '"><thead><tr><th>Código</th><th class="num">Ventas</th><th class="num">Total</th><th>Peso</th></tr></thead><tbody>' + lista.map(function (x) { return '<tr data-clave="' + U.attr(x.clave) + '"><td>' + U.esc(x.clave) + '</td><td class="num">' + U.entero(x.n) + '</td><td class="num">' + U.soles(x.total) + '</td><td><div class="met-comp">' + barra(x.total, max, 'real') + '<small>' + (d.tot.venta ? U.pct(x.total / d.tot.venta, 0) : '–') + '</small></div></td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="texto3">Sin ventas en el periodo.</p>') + '</div>'; }
+    h += '<div class="grid-2">' + tablaAgrupada('Venta por código de origen', d.porCodigo, 'metCodigos') + tablaAgrupada('Venta por gancho aplicado', d.porGancho, 'metGanchos') + tablaAgrupada('Venta por ola', d.porOla, 'metOlas') +
+      '<div class="tarjeta met-ancho"><h3>Ranking de embajadores (trimestre)</h3>' + (rk.length ? '<div class="tabla-scroll"><table class="tabla compacta met-tabla" id="metEmbajadores"><thead><tr><th>#</th><th>Embajador</th><th class="num">Ventas</th><th class="num">Vendido</th><th class="num">Comisión</th></tr></thead><tbody>' + rk.map(function (x, i) { return '<tr><td>' + (i + 1) + '</td><td>' + U.esc(x.nombre) + ' <code>' + U.esc(x.codigo || '') + '</code><br><small class="texto3">' + U.esc(x.ciudad || '') + '</small></td><td class="num">' + U.entero(x.n) + '</td><td class="num">' + U.soles(x.vendido) + '</td><td class="num">' + U.soles(x.comision) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="texto3">Sin embajadores registrados.</p>') + '</div></div>';
+    // Cortes
+    h += '<div class="tarjeta"><h3>Cortes de control</h3><div class="tabla-scroll"><table class="tabla compacta met-tabla" id="metCortes"><thead><tr><th>Fecha</th><th>Corte</th><th class="num">Meta acumulada</th><th class="num">Cuota acumulada</th><th class="num">Real acumulado</th><th class="num">Brecha vs meta</th><th>Estado</th></tr></thead><tbody>' + cs.map(function (c) { return '<tr><td data-label="Fecha">' + U.esc(U.fechaCorta(c.fecha)) + '</td><td data-label="Corte">' + U.esc(c.nombre) + '</td><td data-label="Meta" class="num">' + U.soles(c.meta) + '</td><td data-label="Cuota" class="num">' + U.soles(c.cuota) + '</td><td data-label="Real" class="num">' + U.soles(c.real) + '</td><td data-label="Brecha" class="num ' + (c.brecha >= 0 ? 'bien' : 'mal') + '">' + U.soles(c.brecha) + '</td><td data-label="Estado"><span class="pill' + (c.estado === 'cumplido' ? ' ok' : c.estado === 'no_cumplido' ? ' alerta' : '') + '">' + U.esc(c.estado.replace('_', ' ')) + '</span></td></tr>'; }).join('') + '</tbody></table></div><p class="texto3">Meta acumulada = suma de la meta del día (proyección) del calendario hasta la fecha del corte; cuota acumulada, igual con la cuota oficial. Un corte pasado se marca cumplido si el real acumulado alcanza la cuota.</p></div>';
+    UI.$('p-metricas').innerHTML = h;
+  }
+  function kpi(lab, val, cls, id) { return '<div class="kpi' + (cls ? ' ' + cls : '') + '"><span class="lab">' + U.esc(lab) + '</span><span class="val"' + (id ? ' id="' + id + '"' : '') + '>' + val + '</span></div>'; }
+  function exportarTasas() {
+    var d = datos(); var filas = cfg().segmentos.map(function (s) { var x = d.porSeg[s.codigo]; var p = cfg().tasasPlan[s.codigo] || {}; return { segmento: s.nombre, contactados: x.contactados, respondieron: x.respondieron, propuestas: x.propuestas, compraron: x.compraron, tasaRespuesta: x.contactados ? (x.respondieron / x.contactados * 100).toFixed(1) : '', planRespuesta: ((p.respuesta || 0) * 100).toFixed(1), tasaCompra: x.contactados ? (x.compraron / x.contactados * 100).toFixed(1) : '', planCompra: ((p.compra || 0) * 100).toFixed(1), venta: x.venta.toFixed(2) }; });
+    U.descargar('metricas-tasas-' + U.hoyISO() + '.csv', U.aCSV(filas, ['segmento', 'contactados', 'respondieron', 'propuestas', 'compraron', 'tasaRespuesta', 'planRespuesta', 'tasaCompra', 'planCompra', 'venta']), 'text/csv;charset=utf-8');
+  }
+  function exportarCodigos() { var d = datos(); U.descargar('metricas-codigos-' + U.hoyISO() + '.csv', U.aCSV(d.porCodigo.map(function (x) { return { codigo: x.clave, ventas: x.n, total: x.total.toFixed(2) }; }), ['codigo', 'ventas', 'total']), 'text/csv;charset=utf-8'); }
+  function enlazar() {
+    if (estado.enlazado) return; estado.enlazado = true; var r = UI.$('p-metricas');
+    r.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-met]'); if (!b || b.tagName === 'SELECT') return; var acc = b.getAttribute('data-met'); var f = filtros();
+      if (acc === 'tipo') { f.tipo = b.getAttribute('data-v'); DB.guardarPronto(); render(); }
+      else if (acc === 'semana') { f.semana = U.sumarDias(U.isoDe(f.semana) || lunesDe(U.hoyISO()), Number(b.getAttribute('data-v'))); DB.guardarPronto(); render(); }
+      else if (acc === 'csv-tasas') exportarTasas(); else if (acc === 'csv-codigos') exportarCodigos();
+    });
+    r.addEventListener('change', function (ev) { var s = ev.target.closest('select[data-met]'); if (!s) return; var f = filtros(); if (s.getAttribute('data-met') === 'mes') f.mes = s.value; else if (s.getAttribute('data-met') === 'ola') f.ola = Number(s.value); DB.guardarPronto(); render(); });
+  }
+  V.metricas = { alertaCorte: alertaCorte, datos: datos, rango: rango, cortes: cortes, ranking: ranking };
+  V.registrarPantalla('metricas', render);
+})();
+
+</script>
+<script>
 /* ---- módulo: pipeline.js ---- */
 /* ============================================================================
    pipeline.js · Pantalla PIPELINE (parte 3) · Bodegas Viñas de Oro / The Pisco Room
@@ -3500,6 +3726,254 @@ window.VDO_DATOS = (function () {
   V.registrarPantalla('pipeline', render);
   V.modulos = V.modulos || {}; V.modulos.pipeline = { render: render, fichaContacto: fichaContacto, formCuenta: formCuenta, moverEtapa: moverEtapa, ESTADOS_CUENTA: ESTADOS_CUENTA };
   enlazar();
+})();
+
+</script>
+<script>
+/* ---- módulo: plantillas.js ---- */
+/* ============================================================================
+   plantillas.js · Pantalla PLANTILLAS (parte 5) · biblioteca editable de mensajes
+   por segmento, toque, ola y canal, con variables, vista previa, cobertura,
+   duplicar, restaurar las del plan e importar/exportar JSON.
+   ========================================================================== */
+(function () {
+  'use strict';
+  var V = window.VDO, U = V.util, UI = V.ui, R = V.reglas, E = V.embudo, DB = V.DB, cfg = V.cfg;
+  var VARIABLES = ['nombre', 'nombre_completo', 'empresa', 'ocasion', 'codigo', 'gancho', 'ciudad', 'personas', 'producto', 'total', 'link', 'precio_silver', 'precio_gold', 'precio_blue', 'precio_breca_silver', 'precio_breca_gold', 'precio_breca_blue', 'total_10_gold', 'firma'];
+  var TOQUES = [['1', 'Toque 1 (inicial)'], ['2', 'Toque 2'], ['3', 'Toque 3 (último)'], ['post', 'Post-venta'], ['propuesta', 'Propuesta'], ['recordatorio', 'Recordatorio de cotización'], ['cierre', 'Confirmación de pago y entrega'], ['confirmacion', 'Confirmación de reserva']];
+  var estado = { enlazado: false, timer: null };
+  var MUESTRA = { id: '_muestra', nombre: 'María Fernanda Rojas', telefono: '+51 987 654 321', empresa: 'Rímac', segmento: 'recontacto', ciudad: 'Lima', ocasion: 'un cumpleaños', personas: 2, codigoReferido: 'MFR-07' };
+
+  function filtros() { var f = DB.datos.ui.filtros.plantillas; if (!f || typeof f !== 'object') { f = { segmento: '', toque: '', ola: '', canal: '', activa: '', texto: '' }; DB.datos.ui.filtros.plantillas = f; } return f; }
+  function nombreToque(t) { var x = TOQUES.filter(function (p) { return p[0] === String(t); })[0]; return x ? x[1] : String(t); }
+  function contactoMuestra(id) { if (!id || id === '_muestra') return MUESTRA; return DB.buscar('contactos', id) || MUESTRA; }
+  function variablesDesconocidas(texto) { var m = String(texto || '').match(/\{(\w+)\}/g) || []; return m.map(function (x) { return x.slice(1, -1); }).filter(function (k, i, a) { return VARIABLES.indexOf(k) < 0 && a.indexOf(k) === i; }); }
+  function lista() {
+    var f = filtros(); var t = U.normTexto(f.texto);
+    return DB.tabla('plantillas').filter(function (p) {
+      if (f.segmento && p.segmento !== f.segmento) return false;
+      if (f.toque && String(p.toque) !== f.toque) return false;
+      if (f.ola !== '' && String(p.ola || 0) !== String(f.ola)) return false;
+      if (f.canal && p.canal !== f.canal) return false;
+      if (f.activa === 'si' && p.activa === false) return false; if (f.activa === 'no' && p.activa !== false) return false;
+      if (t && U.normTexto([p.nombre, p.texto, p.asunto].join(' ')).indexOf(t) < 0) return false;
+      return true;
+    });
+  }
+  function cobertura() {
+    var segs = cfg().segmentos; var toques = ['1', '2', '3', 'post'];
+    var h = '<table class="tabla compacta pl-cobertura"><thead><tr><th>Segmento</th>' + toques.map(function (t) { return '<th>' + (t === 'post' ? 'Post' : 'T' + t) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    segs.forEach(function (s) { h += '<tr><td>' + U.esc(s.nombre) + '</td>' + toques.map(function (t) { var hay = DB.tabla('plantillas').some(function (p) { return p.activa !== false && String(p.toque) === t && (p.segmento === s.codigo || (t === 'post' && p.segmento === '*')); }); return '<td class="' + (hay ? 'pl-ok' : 'pl-falta') + '" data-cob="' + U.attr(s.codigo + ':' + t) + '">' + (hay ? '✓' : '·') + '</td>'; }).join('') + '</tr>'; });
+    return h + '</tbody></table><p class="texto3">✓ hay plantilla activa; · falta (se usará la de "Todos" si existe).</p>';
+  }
+  function render() {
+    enlazar(); var f = filtros(); var l = lista(); var raiz = UI.$('p-plantillas');
+    var grupos = {}; l.forEach(function (p) { (grupos[p.segmento] = grupos[p.segmento] || []).push(p); });
+    var orden = cfg().segmentos.map(function (s) { return s.codigo; }).concat(['*']).concat(Object.keys(grupos).filter(function (k) { return k !== '*' && !cfg().segmentos.some(function (s) { return s.codigo === k; }); }));
+    var h = '<div class="cabecera-pantalla"><h2>Plantillas</h2><p class="sub" id="plConteo">' + U.entero(l.length) + ' de ' + U.entero(DB.tabla('plantillas').length) + '</p><div class="acciones"><button type="button" class="btn primario" data-pl="nueva">Nueva plantilla</button><button type="button" class="btn" data-pl="restaurar">Restaurar las del plan</button><button type="button" class="btn" data-pl="exportar">Exportar JSON</button><button type="button" class="btn" data-pl="importar">Importar JSON</button><input type="file" id="plArchivo" accept=".json,application/json" hidden></div></div>' +
+      '<div class="tarjeta filtros pl-filtros"><input type="search" name="texto" placeholder="Buscar en nombre o texto" value="' + U.attr(f.texto) + '"><select name="segmento">' + UI.opcionesSegmentos(f.segmento, 'Todos los segmentos').replace('</select>', '') + '<option value="*"' + (f.segmento === '*' ? ' selected' : '') + '>Todos (*)</option></select>' +
+      '<select name="toque">' + UI.opciones(TOQUES.map(function (t) { return { valor: t[0], texto: t[1] }; }), f.toque, 'Todos los toques') + '</select><select name="ola">' + UI.opciones([{ valor: '0', texto: 'Cualquier ola' }, { valor: '1', texto: 'Ola 1' }, { valor: '2', texto: 'Ola 2' }, { valor: '3', texto: 'Ola 3' }], f.ola, 'Todas las olas') + '</select><select name="canal">' + UI.opciones([{ valor: 'whatsapp', texto: 'WhatsApp' }, { valor: 'correo', texto: 'Correo' }], f.canal, 'Todos los canales') + '</select><select name="activa">' + UI.opciones([{ valor: 'si', texto: 'Activas' }, { valor: 'no', texto: 'Inactivas' }], f.activa, 'Activas e inactivas') + '</select></div>' +
+      '<div class="pl-grid"><div id="plLista">';
+    orden.forEach(function (seg) {
+      var ps = grupos[seg]; if (!ps || !ps.length) return;
+      h += '<div class="tarjeta"><h3>' + U.esc(seg === '*' ? 'Todos los segmentos' : R.nombreSegmento(seg)) + ' <span class="texto3">· ' + ps.length + '</span></h3>' + ps.map(function (p) {
+        return '<div class="pl-item' + (p.activa === false ? ' inactiva' : '') + '" data-id="' + U.attr(p.id) + '"><div class="pl-cab"><b>' + U.esc(p.nombre) + '</b><span class="pill">' + U.esc(nombreToque(p.toque)) + '</span>' + (p.ola ? '<span class="pill">ola ' + U.esc(p.ola) + '</span>' : '') + '<span class="pill">' + U.esc(p.canal) + '</span>' + (p.masivo ? '<span class="pill">leyendas</span>' : '') + (p.activa === false ? '<span class="pill alerta">inactiva</span>' : '') + '</div><p class="pl-texto">' + U.esc(String(p.texto || '').slice(0, 220)) + (String(p.texto || '').length > 220 ? '…' : '') + '</p><div class="acciones"><button type="button" class="btn chico" data-pl="editar" data-id="' + U.attr(p.id) + '">Editar</button><button type="button" class="btn chico" data-pl="probar" data-id="' + U.attr(p.id) + '">Probar</button><button type="button" class="btn chico" data-pl="duplicar" data-id="' + U.attr(p.id) + '">Duplicar</button><button type="button" class="btn chico" data-pl="activar" data-id="' + U.attr(p.id) + '">' + (p.activa === false ? 'Activar' : 'Desactivar') + '</button></div></div>';
+      }).join('') + '</div>';
+    });
+    if (!l.length) h += '<div class="tarjeta"><p class="texto2">Sin plantillas con estos filtros.</p></div>';
+    h += '</div><div class="tarjeta pl-lateral"><h3>Cobertura</h3>' + cobertura() + '</div></div>';
+    raiz.innerHTML = h;
+  }
+  function vistaPrevia(p, contactoId) {
+    var c = contactoMuestra(contactoId); var m = R.armarMensaje(p, c, { fecha: U.hoyISO() });
+    return (m.asunto ? '<p><b>Asunto:</b> ' + U.esc(m.asunto) + '</p>' : '') + '<pre class="texto-plantilla">' + U.esc(m.texto) + '</pre><p class="texto3">' + m.texto.length + ' caracteres · contacto: ' + U.esc(c.nombre) + '</p>';
+  }
+  function selectorContacto(sel) { var cs = DB.tabla('contactos').slice().sort(function (a, b) { return String(a.nombre).localeCompare(String(b.nombre)); }).slice(0, 60); return '<select id="plContacto"><option value="_muestra">Contacto de muestra</option>' + cs.map(function (c) { return '<option value="' + U.attr(c.id) + '"' + (c.id === sel ? ' selected' : '') + '>' + U.esc(c.nombre) + ' · ' + U.esc(R.nombreSegmento(c.segmento)) + '</option>'; }).join('') + '</select>'; }
+  function probar(p) {
+    UI.abrirModal('<h3>Probar · ' + U.esc(p.nombre) + '</h3><div class="campo"><span>Ver con el contacto</span>' + selectorContacto('') + '</div><div id="plPrevia">' + vistaPrevia(p, '_muestra') + '</div><div class="acciones"><button type="button" class="btn" data-plm="copiar">Copiar</button><a class="btn" id="plWa" target="_blank" rel="noopener">Abrir WhatsApp</a><button type="button" class="btn primario" data-plm="cerrar">Cerrar</button></div>', { ancho: 'ancho', sinFoco: true });
+    var m = UI.$('modalContenido');
+    function refrescarWa() { var c = contactoMuestra(UI.$('plContacto').value); var t = R.armarMensaje(p, c, { fecha: U.hoyISO() }).texto; var a = UI.$('plWa'); if (c.telefono) { a.href = R.urlWhatsApp(c.telefono, t); a.hidden = false; } else a.hidden = true; }
+    UI.$('plContacto').onchange = function () { UI.$('plPrevia').innerHTML = vistaPrevia(p, this.value); refrescarWa(); }; refrescarWa();
+    UI.qs('[data-plm="copiar"]', m).onclick = function () { UI.copiar(R.armarMensaje(p, contactoMuestra(UI.$('plContacto').value), { fecha: U.hoyISO() }).texto).then(function (ok) { UI.toast(ok ? 'Mensaje copiado' : 'No se pudo copiar', ok ? '' : 'alerta'); }); };
+    UI.qs('[data-plm="cerrar"]', m).onclick = UI.cerrarModal;
+  }
+  function editor(original) {
+    var p = original ? U.clonar(original) : { id: '', nombre: '', segmento: 'recontacto', toque: '1', ola: 0, canal: 'whatsapp', asunto: '', texto: '', masivo: false, activa: true };
+    var toqueConocido = TOQUES.some(function (t) { return t[0] === String(p.toque); });
+    var h = '<h3>' + (original ? 'Editar plantilla' : 'Nueva plantilla') + '</h3><div class="pl-editor"><form id="plForm" class="form-grid" autocomplete="off">' +
+      UI.campo('Nombre', UI.inp('nombre', p.nombre, 'required')) +
+      UI.campo('Segmento', '<select name="segmento">' + UI.opcionesSegmentos(p.segmento).replace('</select>', '') + '<option value="*"' + (p.segmento === '*' ? ' selected' : '') + '>Todos (*)</option></select>') +
+      UI.campo('Toque', '<select name="toque">' + UI.opciones(TOQUES.map(function (t) { return { valor: t[0], texto: t[1] }; }).concat([{ valor: '_otro', texto: 'Otro (escribir)' }]), toqueConocido ? String(p.toque) : '_otro') + '</select><input name="toqueOtro" placeholder="nombre del toque" value="' + U.attr(toqueConocido ? '' : p.toque) + '"' + (toqueConocido ? ' hidden' : '') + '>') +
+      UI.campo('Ola', '<select name="ola">' + UI.opciones([{ valor: '0', texto: 'Cualquier ola' }, { valor: '1', texto: 'Ola 1' }, { valor: '2', texto: 'Ola 2' }, { valor: '3', texto: 'Ola 3' }], String(p.ola || 0)) + '</select>') +
+      UI.campo('Canal', '<select name="canal">' + UI.opciones([{ valor: 'whatsapp', texto: 'WhatsApp' }, { valor: 'correo', texto: 'Correo' }], p.canal) + '</select>') +
+      '<div class="campo" id="plAsuntoCampo"' + (p.canal === 'correo' ? '' : ' hidden') + '><span>Asunto (correo)</span>' + UI.inp('asunto', p.asunto) + '</div>' +
+      '<div class="campo ancho"><span>Texto</span><div class="pl-vars">' + VARIABLES.map(function (v) { return '<button type="button" class="btn chico" data-var="' + v + '">{' + v + '}</button>'; }).join('') + '</div><textarea name="texto" rows="9">' + U.esc(p.texto) + '</textarea><small id="plAviso"></small></div>' +
+      '<label class="pl-check"><input type="checkbox" name="masivo"' + (p.masivo ? ' checked' : '') + '> Mensaje masivo (agrega las leyendas legales)</label><label class="pl-check"><input type="checkbox" name="activa"' + (p.activa !== false ? ' checked' : '') + '> Activa</label>' +
+      '<div class="acciones ancho">' + (original ? '<button type="button" class="btn peligro izq" data-plm="eliminar">Eliminar</button>' : '') + '<button type="button" class="btn" data-plm="cerrar">Cancelar</button><button type="submit" class="btn primario">Guardar</button></div></form>' +
+      '<div class="pl-previa"><h4>Vista previa</h4><div class="campo"><span>Contacto</span>' + selectorContacto('') + '</div><div id="plPrevia"></div></div></div>';
+    UI.abrirModal(h, { ancho: 'ancho' });
+    var m = UI.$('modalContenido'); var form = UI.$('plForm'); var ta = UI.qs('[name="texto"]', form);
+    function leer() { var f = UI.leerForm(form); var t = f.toque === '_otro' ? String(f.toqueOtro || '').trim() || 'otro' : f.toque; return { id: p.id, nombre: String(f.nombre || '').trim(), segmento: f.segmento, toque: /^\d$/.test(t) ? Number(t) : t, ola: Number(f.ola) || 0, canal: f.canal, asunto: f.canal === 'correo' ? String(f.asunto || '') : '', texto: f.texto, masivo: !!f.masivo, activa: !!f.activa }; }
+    function refrescar() {
+      var q = leer(); var desc = variablesDesconocidas(q.texto + ' ' + q.asunto); var aviso = UI.$('plAviso');
+      aviso.innerHTML = (desc.length ? '<span class="mal">Variables desconocidas: ' + U.esc(desc.map(function (x) { return '{' + x + '}'; }).join(', ')) + '</span> · ' : '') + q.texto.length + ' caracteres';
+      UI.$('plPrevia').innerHTML = vistaPrevia(q, UI.$('plContacto').value);
+      UI.$('plAsuntoCampo').hidden = q.canal !== 'correo'; UI.qs('[name="toqueOtro"]', form).hidden = UI.qs('[name="toque"]', form).value !== '_otro';
+    }
+    form.addEventListener('input', refrescar); form.addEventListener('change', refrescar); UI.$('plContacto').onchange = refrescar;
+    UI.qsa('[data-var]', form).forEach(function (b) { b.onclick = function () { var v = '{' + b.getAttribute('data-var') + '}'; var s = ta.selectionStart || 0, e = ta.selectionEnd || 0; ta.value = ta.value.slice(0, s) + v + ta.value.slice(e); ta.focus(); ta.selectionStart = ta.selectionEnd = s + v.length; refrescar(); }; });
+    UI.qs('[data-plm="cerrar"]', form).onclick = UI.cerrarModal;
+    var del = UI.qs('[data-plm="eliminar"]', form); if (del) del.onclick = function () {
+      var hermanas = DB.tabla('plantillas').filter(function (x) { return x.id !== p.id && x.segmento === p.segmento && String(x.toque) === String(p.toque) && x.activa !== false; }).length;
+      if (window.confirm('¿Eliminar la plantilla "' + p.nombre + '"?' + (!hermanas ? ' Es la única de su segmento y toque: los mensajes usarán la de "Todos" o quedarán sin plantilla.' : ''))) { DB.eliminar('plantillas', p.id); UI.cerrarModal(); UI.toast('Plantilla eliminada'); render(); }
+    };
+    form.onsubmit = function (ev) {
+      ev.preventDefault(); var q = leer();
+      if (!q.nombre || !q.texto.trim()) { UI.toast('Escriba el nombre y el texto', 'alerta'); return; }
+      var desc = variablesDesconocidas(q.texto + ' ' + q.asunto); if (desc.length && !window.confirm('Hay variables desconocidas (' + desc.join(', ') + '). ¿Guardar igual?')) return;
+      if (!q.id) q.id = 'pl_' + U.normTexto(q.segmento === '*' ? 'todos' : q.segmento) + '_' + String(q.toque) + '_' + Date.now().toString(36);
+      DB.upsert('plantillas', q); UI.cerrarModal(); UI.toast('Plantilla guardada'); render();
+    };
+    refrescar();
+  }
+  function duplicar(p) { var q = U.clonar(p); q.id = p.id + '_copia_' + Date.now().toString(36); q.nombre = p.nombre + ' (copia)'; delete q.createdAt; delete q.updatedAt; DB.upsert('plantillas', q); UI.toast('Plantilla duplicada'); render(); }
+  function restaurar() {
+    UI.confirmar('Se vuelven a cargar las ' + window.VDO_DATOS.PLANTILLAS.length + ' plantillas del plan: las que tengan el mismo identificador se reemplazan; las que usted creó se conservan. ¿Continuar?', function () {
+      var n = 0; window.VDO_DATOS.PLANTILLAS.forEach(function (p) { var q = U.clonar(p); q.activa = true; var ex = DB.buscar('plantillas', q.id); if (ex) { q.createdAt = ex.createdAt; } DB.upsert('plantillas', q); n++; }); UI.toast(n + ' plantillas restauradas'); render();
+    }, 'Restaurar');
+  }
+  function exportar() { U.descargar('plantillas-' + U.hoyISO() + '.json', JSON.stringify({ formato: 'vdo-plantillas', generado: U.ahoraISO(), plantillas: DB.tabla('plantillas') }, null, 1), 'application/json'); UI.toast('Plantillas exportadas'); }
+  function importar(texto) {
+    var json; try { json = JSON.parse(texto); } catch (e) { UI.toast('El archivo no es un JSON válido', 'alerta'); return; }
+    var arr = Array.isArray(json) ? json : (json && Array.isArray(json.plantillas) ? json.plantillas : null);
+    if (!arr) { UI.toast('El JSON debe ser un arreglo de plantillas o {plantillas: [...]}', 'alerta'); return; }
+    var n = 0; arr.forEach(function (p) { if (!p || typeof p !== 'object' || !p.texto) return; var q = { id: p.id || 'pl_imp_' + Date.now().toString(36) + n, nombre: p.nombre || 'Sin nombre', segmento: p.segmento || '*', toque: p.toque == null ? '1' : p.toque, ola: Number(p.ola) || 0, canal: p.canal === 'correo' ? 'correo' : 'whatsapp', asunto: p.asunto || '', texto: String(p.texto), masivo: !!p.masivo, activa: p.activa !== false }; DB.upsert('plantillas', q); n++; });
+    UI.toast(n + ' plantillas importadas'); render();
+  }
+  function enlazar() {
+    if (estado.enlazado) return; estado.enlazado = true; var r = UI.$('p-plantillas');
+    r.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-pl]'); if (!b) return; var acc = b.getAttribute('data-pl'); var p = b.getAttribute('data-id') ? DB.buscar('plantillas', b.getAttribute('data-id')) : null;
+      if (acc === 'nueva') editor(null); else if (acc === 'editar' && p) editor(p); else if (acc === 'probar' && p) probar(p); else if (acc === 'duplicar' && p) duplicar(p);
+      else if (acc === 'activar' && p) { p.activa = p.activa === false; DB.upsert('plantillas', p); render(); }
+      else if (acc === 'restaurar') restaurar(); else if (acc === 'exportar') exportar(); else if (acc === 'importar') UI.$('plArchivo').click();
+    });
+    r.addEventListener('change', function (ev) {
+      var el = ev.target; if (el.id === 'plArchivo') { var f = el.files && el.files[0]; if (!f) return; var lector = new FileReader(); lector.onload = function () { importar(String(lector.result)); el.value = ''; }; lector.readAsText(f, 'utf-8'); return; }
+      if (el.name && el.closest('.pl-filtros')) { filtros()[el.name] = el.value; DB.guardarPronto(); render(); }
+    });
+    r.addEventListener('input', function (ev) { var el = ev.target; if (el.name === 'texto' && el.closest('.pl-filtros')) { filtros().texto = el.value; DB.guardarPronto(); clearTimeout(estado.timer); estado.timer = setTimeout(function () { var v = el.value; render(); var nuevo = UI.qs('.pl-filtros input[name="texto"]', r); if (nuevo) { nuevo.focus(); nuevo.value = v; } }, 250); } });
+  }
+  V.plantillas = { variablesDesconocidas: variablesDesconocidas, VARIABLES: VARIABLES, importar: importar };
+  V.registrarPantalla('plantillas', render);
+})();
+
+</script>
+<script>
+/* ---- módulo: reporte.js ---- */
+/* ============================================================================
+   reporte.js · Pantalla REPORTE SEMANAL (parte 5) · resumen en texto plano para
+   el comité de los viernes: ventas, avance contra meta, actividad y tasas,
+   calendario, pendientes y próxima semana. Copiable como texto y correo.
+   ========================================================================== */
+(function () {
+  'use strict';
+  var V = window.VDO, U = V.util, UI = V.ui, R = V.reglas, DB = V.DB, cfg = V.cfg;
+  var estado = { enlazado: false };
+  function lunesDe(iso) { var d = U.diaSemana(iso); return U.sumarDias(iso, d === 0 ? -6 : 1 - d); }
+  function cuenta(v) { return ['pagado', 'entregado'].indexOf(v.estado) >= 0 && !v.derivarB2B; }
+  function fechaVenta(v) { return U.isoDe(v.fechaCierre) || U.isoDe(v.fecha) || ''; }
+  function en(f, a, b) { return !!f && f >= a && f <= b; }
+  function linea(c) { return (c || '-').repeat(44); }
+  function pctTxt(x) { return x == null ? '–' : U.pct(x, 1); }
+
+  function generar(lunes) {
+    lunes = U.isoDe(lunes) || lunesDe(U.hoyISO()); var sabado = U.sumarDias(lunes, 5); var hoy = U.hoyISO(); var corte = sabado < hoy ? sabado : hoy;
+    var P = cfg().empresa.periodo; var M = cfg().metas; var cal = DB.tabla('calendario'); var porId = {}; DB.tabla('contactos').forEach(function (c) { porId[c.id] = c; });
+    var vs = DB.tabla('ventas').filter(function (v) { return cuenta(v) && en(fechaVenta(v), lunes, sabado); });
+    var b2b = DB.tabla('ventas').filter(function (v) { return v.derivarB2B && v.estado !== 'perdido' && en(fechaVenta(v), lunes, sabado); });
+    var tot = vs.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
+    function grupo(lista, clave) { var m = {}; lista.forEach(function (v) { var k = clave(v) || '(sin dato)'; if (!m[k]) m[k] = { n: 0, t: 0 }; m[k].n++; m[k].t += Number(v.total) || 0; }); return Object.keys(m).sort(function (a, b) { return m[b].t - m[a].t; }).map(function (k) { return '  - ' + k + ': ' + m[k].n + ' venta' + (m[k].n === 1 ? '' : 's') + ' · ' + U.soles(m[k].t); }).join('\n') || '  - sin ventas'; }
+    var vBot = vs.filter(function (v) { return v.linea !== 'experiencia'; }).reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0), vExp = tot - vBot;
+    var acum = DB.tabla('ventas').filter(function (v) { return cuenta(v) && en(fechaVenta(v), P.desde, corte); }).reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
+    var metaAcum = cal.filter(function (d) { return d.fecha <= corte; }).reduce(function (s, d) { return s + (Number(d.metaDia) || 0); }, 0), cuotaAcum = cal.filter(function (d) { return d.fecha <= corte; }).reduce(function (s, d) { return s + (Number(d.cuotaDia) || 0); }, 0);
+    var mes = corte.slice(0, 7); var realMes = DB.tabla('ventas').filter(function (v) { return cuenta(v) && fechaVenta(v).slice(0, 7) === mes; }).reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0);
+    var metaTotal = Number(M.total) || 200000; var restantes = cal.filter(function (d) { return d.fecha > corte; }).length; var reqDia = restantes ? Math.max(0, metaTotal - acum) / restantes : 0;
+    var inter = DB.tabla('interacciones').filter(function (i) { return en(String(i.fecha || '').slice(0, 10), lunes, sabado); });
+    var tocados = {}, iniciales = 0, respuestas = 0; inter.forEach(function (i) { if (i.contactoId) tocados[i.contactoId] = 1; if (String(i.toque) === '1') iniciales++; if (i.resultado === 'respondio' || i.resultado === 'compro') respuestas++; });
+    var met = V.metricas && V.metricas.datos ? V.metricas.datos({ desde: lunes, hasta: sabado, nombre: 'semana' }) : null;
+    var tasas = cfg().segmentos.map(function (s) { var x = met ? met.porSeg[s.codigo] : null; var p = cfg().tasasPlan[s.codigo] || {}; if (!x || !x.contactados) return '  - ' + s.nombre + ': sin contactos nuevos (plan ' + U.pct(p.respuesta || 0, 0) + ' / ' + U.pct(p.compra || 0, 1) + ')'; return '  - ' + s.nombre + ': ' + x.contactados + ' contactados · respuesta ' + pctTxt(x.respondieron / x.contactados) + ' (plan ' + U.pct(p.respuesta || 0, 0) + ') · compra ' + pctTxt(x.compraron / x.contactados) + ' (plan ' + U.pct(p.compra || 0, 1) + ')'; }).join('\n');
+    var dias = cal.filter(function (d) { return d.fecha >= lunes && d.fecha <= sabado; });
+    var calTxt = dias.map(function (d) { return '  - ' + U.fechaCorta(d.fecha) + ' (' + V.DIAS[d.dow].slice(0, 3) + '): ' + (d.estado || 'pendiente').replace('_', ' ') + ' · meta ' + U.soles(d.metaDia) + (d.hito ? ' · ' + d.hito : '') + '\n    ' + String(d.foco || '').slice(0, 110) + (String(d.foco || '').length > 110 ? '…' : ''); }).join('\n') || '  - sin días de atención';
+    var vencidos = DB.tabla('contactos').filter(function (c) { return c.estado === 'activo' && c.proximoToque && c.proximoToque < corte; }).sort(function (a, b) { return a.proximoToque < b.proximoToque ? -1 : 1; });
+    var abiertas = DB.tabla('ventas').filter(function (v) { return (v.estado === 'cotizado' || v.estado === 'link_enviado') && !v.derivarB2B; });
+    var cuentasVenc = DB.tabla('cuentas').filter(function (k) { return k.fechaProximoPaso && k.fechaProximoPaso < corte && ['cerrado', 'perdido'].indexOf(k.estado) < 0; });
+    var dormidos = DB.tabla('contactos').filter(function (c) { return c.estado === 'dormido' && String(c.notas || '').indexOf(': dormido') >= 0 && en(U.isoDe(String(c.updatedAt || '').slice(0, 10)), lunes, sabado); }).length;
+    var embSin = DB.tabla('embajadores').filter(function (e) { return e.estado === 'activo' && !DB.tabla('ventas').some(function (v) { return cuenta(v) && fechaVenta(v).slice(0, 7) === mes && (v.embajadorId === e.id || (e.codigo && String(v.codigoOrigen || '').toUpperCase() === String(e.codigo).toUpperCase())); }); });
+    var lun2 = U.sumarDias(lunes, 7), sab2 = U.sumarDias(lunes, 12);
+    var fechas = cfg().fechasClave.filter(function (f) { return en(f.fecha, lun2, sab2) || (f.hasta && f.fecha <= sab2 && f.hasta >= lun2); }).map(function (f) { return '  - ' + U.fechaCorta(f.fecha) + (f.hasta ? ' al ' + U.fechaCorta(f.hasta) : '') + ': ' + f.texto; }).concat(cfg().cortes.filter(function (c) { return en(c.fecha, lun2, sab2); }).map(function (c) { return '  - ' + U.fechaCorta(c.fecha) + ': corte · ' + c.nombre; })).join('\n') || '  - sin fechas clave';
+    var cuotasProx = {}; cal.filter(function (d) { return d.fecha >= lun2 && d.fecha <= sab2; }).forEach(function (d) { Object.keys(d.cuotas || {}).forEach(function (k) { cuotasProx[k] = (cuotasProx[k] || 0) + (Number(d.cuotas[k]) || 0); }); });
+    var al = V.metricas && V.metricas.alertaCorte ? V.metricas.alertaCorte() : null;
+    var t = [];
+    t.push('REPORTE SEMANAL B2C · semana del ' + U.fechaCorta(lunes) + ' al ' + U.fechaCorta(sabado) + ' · ' + (cfg().empresa.responsable || 'Joaquín Díaz'));
+    t.push('Generado el ' + U.fechaCorta(hoy) + ' · datos al ' + U.fechaCorta(corte));
+    t.push(linea('='));
+    t.push('1. VENTAS DE LA SEMANA');
+    t.push('  Total: ' + vs.length + ' venta' + (vs.length === 1 ? '' : 's') + ' · ' + U.soles(tot) + ' · ticket promedio ' + U.soles(vs.length ? tot / vs.length : 0));
+    t.push('  Mix: botellas ' + U.soles(vBot) + ' (' + (tot ? U.pct(vBot / tot, 0) : '–') + ') · experiencia ' + U.soles(vExp) + ' (' + (tot ? U.pct(vExp / tot, 0) : '–') + ') · objetivo ' + U.pct(M.mix.botellas, 0) + ' / ' + U.pct(M.mix.experiencia, 0));
+    t.push('  Por segmento:\n' + grupo(vs, function (v) { var c = porId[v.contactoId]; return R.nombreSegmento((c && c.segmento) || v.segmento); }));
+    t.push('  Por código de origen:\n' + grupo(vs, function (v) { return String(v.codigoOrigen || '').toUpperCase(); }));
+    t.push('  Derivadas a B2B (no suman): ' + b2b.length + ' · ' + U.soles(b2b.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0)));
+    t.push(linea());
+    t.push('2. AVANCE DEL TRIMESTRE (al ' + U.fechaCorta(corte) + ')');
+    t.push('  Acumulado: ' + U.soles(acum) + ' · cuota oficial acumulada ' + U.soles(cuotaAcum) + ' (' + pctTxt(cuotaAcum ? acum / cuotaAcum : null) + ') · proyección acumulada ' + U.soles(metaAcum) + ' (' + pctTxt(metaAcum ? acum / metaAcum : null) + ') · brecha vs proyección ' + U.soles(acum - metaAcum));
+    t.push('  Mes de ' + U.nombreMes(mes) + ': ' + U.soles(realMes) + ' de cuota ' + U.soles(M.cuotaOficial[mes] || 0) + ' (' + pctTxt(M.cuotaOficial[mes] ? realMes / M.cuotaOficial[mes] : null) + ') y proyección ' + U.soles(M.proyeccion[mes] || 0) + ' (' + pctTxt(M.proyeccion[mes] ? realMes / M.proyeccion[mes] : null) + ')');
+    t.push('  Para cerrar el trimestre en ' + U.soles(metaTotal) + ': ' + U.soles(reqDia) + ' por día de atención en los ' + restantes + ' días que quedan' + (al ? ' · ' + al.texto : ''));
+    t.push(linea());
+    t.push('3. ACTIVIDAD DE LA SEMANA');
+    t.push('  Contactos tocados: ' + Object.keys(tocados).length + ' · mensajes: ' + inter.length + ' · toques iniciales: ' + iniciales + ' · respuestas: ' + respuestas);
+    t.push('  Tasas por segmento (real vs plan):\n' + tasas);
+    t.push(linea());
+    t.push('4. CALENDARIO DE LA SEMANA\n' + calTxt);
+    t.push(linea());
+    t.push('5. PENDIENTES');
+    t.push('  Toques vencidos: ' + vencidos.length + (vencidos.length ? '\n' + vencidos.slice(0, 10).map(function (c) { return '    - ' + c.nombre + ' (' + R.nombreSegmento(c.segmento) + ') · ' + U.diasEntre(c.proximoToque, corte) + ' días de atraso'; }).join('\n') : ''));
+    t.push('  Cotizaciones abiertas: ' + abiertas.length + ' · ' + U.soles(abiertas.reduce(function (s, v) { return s + (Number(v.total) || 0); }, 0)) + (abiertas.length ? '\n' + abiertas.slice(0, 10).map(function (v) { var c = porId[v.contactoId]; return '    - ' + ((c && c.nombre) || v.clienteNombre || 'sin contacto') + ' · ' + U.soles(v.total) + ' · ' + v.estado.replace('_', ' '); }).join('\n') : ''));
+    t.push('  Cuentas con próximo paso vencido: ' + cuentasVenc.length + (cuentasVenc.length ? '\n' + cuentasVenc.slice(0, 10).map(function (k) { return '    - ' + k.empresa + ' · ' + (k.proximoPaso || 'sin paso') + ' · ' + U.fechaCorta(k.fechaProximoPaso); }).join('\n') : ''));
+    t.push('  Contactos dormidos esta semana: ' + dormidos + ' · embajadores activos sin ventas en el mes: ' + (embSin.length ? embSin.map(function (e) { return e.nombre; }).join(', ') : 'ninguno'));
+    t.push(linea());
+    t.push('6. PRÓXIMA SEMANA (' + U.fechaCorta(lun2) + ' al ' + U.fechaCorta(sab2) + ')');
+    t.push('  Fechas clave y cortes:\n' + fechas);
+    t.push('  Contactos planificados: ' + Object.keys(cuotasProx).filter(function (k) { return cuotasProx[k]; }).map(function (k) { return R.nombreSegmento(k) + ' ' + cuotasProx[k]; }).join(' · '));
+    return t.join('\n');
+  }
+
+  function render() {
+    enlazar(); var ui = DB.datos.ui; var lunes = U.isoDe(ui.reporteSemana) || lunesDe(U.hoyISO()); var hist = Array.isArray(ui.reportes) ? ui.reportes : [];
+    var texto = generar(lunes); estado.texto = texto; estado.lunes = lunes;
+    UI.$('p-reporte').innerHTML = '<div class="cabecera-pantalla"><h2>Reporte semanal</h2><p class="sub">Para el comité de los viernes · semana del ' + U.esc(U.fechaCorta(lunes)) + ' al ' + U.esc(U.fechaCorta(U.sumarDias(lunes, 5))) + '</p><nav class="subnav"><button type="button" class="btn chico" data-rep="semana" data-v="-7">◀ Semana anterior</button><button type="button" class="btn chico" data-rep="hoy">Esta semana</button><button type="button" class="btn chico" data-rep="semana" data-v="7">Semana siguiente ▶</button></nav></div>' +
+      '<div class="tarjeta rep-barra"><div class="form-grid"><label class="campo"><span>Correo destinatario</span><input id="repCorreo" value="' + U.attr(ui.reporteCorreo || '') + '" placeholder="comite@bvo.com.pe" inputmode="email"></label></div><div class="acciones"><button type="button" class="btn primario" data-rep="copiar">Copiar como texto</button><a class="btn" id="repMail" target="_blank" rel="noopener" href="' + U.attr(R.urlCorreo(ui.reporteCorreo || '', 'Reporte semanal B2C · semana del ' + U.fechaCorta(lunes), texto)) + '">Abrir correo</a><button type="button" class="btn" data-rep="txt">Descargar .txt</button><button type="button" class="btn" data-rep="guardar">Guardar en el historial</button><button type="button" class="btn chico" data-rep="generar">Regenerar</button></div></div>' +
+      '<div class="tarjeta"><pre class="rep-texto" id="repTexto">' + U.esc(texto) + '</pre></div>' +
+      '<div class="tarjeta"><h3>Historial <span class="texto3">· ' + hist.length + '</span></h3>' + (hist.length ? '<ul class="rep-hist">' + hist.map(function (r, i) { return '<li><b>Semana del ' + U.esc(U.fechaCorta(r.semana)) + '</b> · generado ' + U.esc(U.fechaHora(r.generado)) + ' <span class="acciones"><button type="button" class="btn chico" data-rep="ver" data-i="' + i + '">Ver</button><button type="button" class="btn chico" data-rep="copiar-hist" data-i="' + i + '">Copiar</button><button type="button" class="btn chico peligro" data-rep="borrar" data-i="' + i + '">Borrar</button></span></li>'; }).join('') + '</ul>' : '<p class="texto3">Aún no hay reportes guardados.</p>') + '</div>';
+  }
+  function enlazar() {
+    if (estado.enlazado) return; estado.enlazado = true; var r = UI.$('p-reporte');
+    r.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-rep]'); if (!b) return; var acc = b.getAttribute('data-rep'); var ui = DB.datos.ui; var hist = Array.isArray(ui.reportes) ? ui.reportes : (ui.reportes = []);
+      if (acc === 'semana') { ui.reporteSemana = U.sumarDias(estado.lunes, Number(b.getAttribute('data-v'))); DB.guardarPronto(); render(); }
+      else if (acc === 'hoy') { ui.reporteSemana = lunesDe(U.hoyISO()); DB.guardarPronto(); render(); }
+      else if (acc === 'generar') render();
+      else if (acc === 'copiar') UI.copiar(estado.texto).then(function (ok) { UI.toast(ok ? 'Reporte copiado' : 'No se pudo copiar', ok ? '' : 'alerta'); });
+      else if (acc === 'txt') U.descargar('reporte-semanal-' + estado.lunes + '.txt', estado.texto, 'text/plain;charset=utf-8');
+      else if (acc === 'guardar') { hist.unshift({ semana: estado.lunes, generado: U.ahoraISO(), texto: estado.texto }); if (hist.length > 20) hist.length = 20; DB.guardarPronto(); UI.toast('Reporte guardado'); render(); }
+      else if (acc === 'ver') { var x = hist[Number(b.getAttribute('data-i'))]; if (x) UI.abrirModal('<h3>Semana del ' + U.esc(U.fechaCorta(x.semana)) + '</h3><pre class="rep-texto">' + U.esc(x.texto) + '</pre><div class="acciones"><button type="button" class="btn primario" data-accion="cerrar">Cerrar</button></div>', { ancho: 'ancho', sinFoco: true }); }
+      else if (acc === 'copiar-hist') { var y = hist[Number(b.getAttribute('data-i'))]; if (y) UI.copiar(y.texto).then(function (ok) { UI.toast(ok ? 'Reporte copiado' : 'No se pudo copiar', ok ? '' : 'alerta'); }); }
+      else if (acc === 'borrar') { hist.splice(Number(b.getAttribute('data-i')), 1); DB.guardarPronto(); render(); }
+    });
+    r.addEventListener('input', function (ev) { if (ev.target.id === 'repCorreo') { DB.datos.ui.reporteCorreo = ev.target.value.trim(); DB.guardarPronto(); var a = UI.$('repMail'); if (a) a.href = R.urlCorreo(DB.datos.ui.reporteCorreo, 'Reporte semanal B2C · semana del ' + U.fechaCorta(estado.lunes), estado.texto); } });
+  }
+  V.reporte = { generar: generar };
+  V.registrarPantalla('reporte', render);
 })();
 
 </script>
