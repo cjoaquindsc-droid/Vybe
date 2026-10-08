@@ -1,6 +1,6 @@
 # Pendientes y supuestos · CRM B2C Viñas de Oro
 
-Última actualización: 08/10/2026 (entrega de las partes 3 a 6). Lo que el plan (PDF del 05/10) no cierra o contradice a la especificación quedó precargado como dato editable y marcado aquí.
+Última actualización: 08/10/2026 (entrega de las partes 3 a 7, con la versión en la nube). Lo que el plan (PDF del 05/10) no cierra o contradice a la especificación quedó precargado como dato editable y marcado aquí.
 
 ## Supuestos tomados (editables en Ajustes)
 
@@ -27,6 +27,8 @@
 | Semana del reporte | Lunes a sábado; "próxima semana" es la siguiente de lunes a sábado | Días de atención del calendario. |
 | Ranking y comisiones | El ranking de MÉTRICAS es del trimestre; la comisión se calcula mes a mes (10 % o 15 % según el mes) y los pagos se descuentan del saldo | Especificación de embajadores. |
 | Alerta de corte | Brecha = acumulado real − meta acumulada (proyección) a hoy; ritmo requerido = lo que falta para S/ 200,000 ÷ días de atención restantes; contactos/día = ritmo ÷ (ticket promedio × tasa de compra del periodo) | Fórmula propia; cuando no hay ventas usa ticket S/ 215 y tasa 5 % (mínimo 1 %). |
+| Nube | En la página publicada en claude.ai cada registro es un documento de la base del artefacto; la página compara lo que tiene en memoria con la última copia sincronizada y escribe solo lo que cambió. Dos dispositivos que editan el mismo registro: gana el último que guarda. Los filtros y la pantalla abierta quedan por dispositivo | Capacidad `db` de claude.ai (sin transacciones; último escritor gana). |
+| Registros escritos desde el chat | La página completa lo que falte (teléfono +51, etapa, estado, totales de venta) y vuelve a escribir el documento corregido | Para que lo registrado por Claude se vea igual que lo registrado a mano. |
 | Dormidos | Quien recibe el tercer toque y no responde en la ventana siguiente pasa a dormido automáticamente; vuelve a la cola cuando empieza otra ola y han pasado 3 semanas | Especificación. |
 
 ## Pendientes que dependen de Joaquín o del negocio
@@ -53,3 +55,6 @@ Las ocho pantallas más Ajustes funcionan en `crm-vdo.html` abierto por `file://
 - El arrastrar y soltar del PIPELINE requiere mouse o trackpad; en el celular se usan los botones ◀ ▶.
 - Las "Propuestas" de MÉTRICAS cuentan contactos con cotización abierta o en etapa Proponer o posterior; no hay un registro separado de propuestas enviadas.
 - El historial del REPORTE guarda hasta 20 reportes en el navegador (también van en el respaldo JSON).
+- Nube: la base de un artefacto admite hasta 25,000 documentos y 256 KB por documento. Las interacciones crecen una por mensaje (unas 4,500 en el trimestre con el plan completo): entra holgado, pero al cambiar de trimestre conviene exportarlas y borrar las antiguas. Las consultas desde el chat recorren la colección completa; con varios miles de documentos siguen funcionando pero más lento.
+- Nube: la página no funciona sin conexión; si claude.ai no responde ofrece trabajar en ese navegador y subir luego los cambios. El modo local (archivo) sigue siendo la alternativa sin internet.
+- Nube: la página se probó con una base simulada en Chromium (24 comprobaciones) y la publicación real se verificó leyendo la base desde esta sesión; no se probó en Safari de iPhone dentro de claude.ai.

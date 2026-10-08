@@ -36,6 +36,7 @@ Cada pantalla grande vive en `src/modulos/<nombre>.js` (+ `src/modulos/<nombre>.
 - `ventas`: `formVenta(venta|null, {contacto, cuentaId, alGuardar})` abre el formulario compartido (productos, packs, experiencias, paquetes, gancho, código de origen, estado, umbral B2B automático; al guardar mueve el contacto en el embudo); `catalogoVenta()`; `normalizarVenta(v)`; `totalVenta(items)`; `lineaDe(items)`.
 - `ui`: `navegar(pantalla, sub?)`, `refrescar()`, `toast(msg, 'alerta'?)`, `abrirModal(html, {ancho:'ancho'})`, `cerrarModal()`, `confirmar(texto, onOk, textoBoton)`, `copiar(texto)`, `formContacto(c|null)`, `formVenta`, `opciones(lista, valor, vacio)`, `opcionesSegmentos`, `opcionesEtapas`, `campo(etiqueta, inputHtml, ayuda)`, `inp(nombre, valor, extra)`, `leerForm(form)`, `$`, `qs`, `qsa`.
 - `DIAS`, `MESES`, `ORDEN_ETAPAS`.
+- `nube`: `activa()` (true en la página publicada con base en la nube), `estado()` (texto del indicador), `pendientes()` (escrituras en cola), `fallos()`, `sincronizar()`. Los módulos no necesitan saber en qué modo están: `DB.upsert`/`DB.eliminar`/`DB.guardarPronto` funcionan igual; en modo nube `guardar()` compara cada registro con la última copia sincronizada y escribe solo lo que cambió, y los cambios externos llegan por `onSnapshot`, se aplican a `DB.datos` y disparan `refrescar()` cuando no hay un modal abierto ni un campo con foco. `DB.datos.ui` es por dispositivo en los dos modos.
 
 ## API que exponen los módulos (si están cargados)
 

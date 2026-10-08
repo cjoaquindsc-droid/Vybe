@@ -2,9 +2,23 @@
 
 CRM operativo del canal B2C (pisco premium y The Pisco Room, Westin Lima) para ejecutar el plan de captación del Q4 2026: meta S/ 200,000 entre el 01/10 y el 31/12/2026, mix 60/40 botellas/experiencias. Responsable: Joaquín Díaz.
 
-Funciona abriendo **un solo archivo** (`crm-vdo.html`) en el navegador de la laptop o del celular. Sin servidor, sin instalaciones, sin internet. Los datos viven en el navegador (localStorage) y se respaldan en JSON.
+Se usa de dos maneras con el mismo archivo `crm-vdo.html`:
 
-## Cómo abrirlo
+- **En la nube (recomendado):** la página publicada en claude.ai, **https://claude.ai/artifact/EDvShuCT6JAbmMCUGMajyT**. Se abre con la cuenta de Claude desde cualquier laptop o celular, los datos se guardan en la base de datos de esa página y se ven iguales en todos los dispositivos. Claude puede alimentarla desde el chat (guía en `docs/alimentar-desde-el-chat.md`).
+- **Como archivo local:** doble clic en `crm-vdo.html`. Sin servidor, sin instalaciones, sin internet. Los datos viven en ese navegador (localStorage) y se respaldan en JSON. Sirve para trabajar sin conexión o como copia de seguridad.
+
+## Versión en la nube
+
+1. Abre https://claude.ai/artifact/EDvShuCT6JAbmMCUGMajyT con tu cuenta (es privada: solo tú la ves hasta que la compartas desde el menú Compartir de la página).
+2. La primera vez carga el plan (calendario, plantillas, precios) y la base del Centro de Mando. El indicador arriba a la derecha dice "Sincronizado" cuando todo está guardado.
+3. Lo que registres en la laptop aparece en el celular en segundos, y al revés. Si la página está abierta en dos lugares, gana el último cambio guardado en cada registro.
+4. Para que Claude registre cosas desde una conversación (una venta, un contacto, "le escribí y respondió"), dale la guía `docs/alimentar-desde-el-chat.md` como instrucciones del proyecto o sube la carpeta `skills/vdo-crm-nube` como skill. La página se actualiza sola al recibir los cambios.
+5. Descargas (respaldo JSON, CSV, reporte .txt) piden confirmación en el visor de claude.ai antes de guardar. Conviene descargar un respaldo JSON una vez por semana.
+6. Si la página dice "No se pudo conectar con la nube", reintenta; si eliges "Trabajar en este navegador", los cambios quedan en ese navegador y luego se suben con Ajustes → Datos → "Subir a la nube los datos guardados en este navegador".
+
+Los filtros y la pantalla abierta se recuerdan por dispositivo; todo lo demás (contactos, interacciones, ventas, cuentas, embajadores, calendario, plantillas y configuración) está en la nube.
+
+## Cómo abrirlo como archivo local
 
 1. Descarga `crm-vdo.html` (o clona este repositorio).
 2. Ábrelo con doble clic en Chrome, Edge o Safari. En el celular: cópialo a Archivos o Drive y ábrelo con el navegador.
@@ -54,7 +68,7 @@ crm-vdo.html                 ← el archivo que se abre (ensamblado, no editar a
 src/crm-markup.html          ← estructura de pantallas
 src/crm-estilos.css          ← estilo The Pisco Room (negro, dorado, versales)
 src/crm-datos.js             ← datos precargados del plan: segmentos, precios, ganchos, metas, calendario, plantillas
-src/crm-logica.js            ← almacén, reglas, embudo, importación, formularios compartidos, CONTACTOS y AJUSTES
+src/crm-logica.js            ← almacén (local y nube), reglas, embudo, importación, formularios compartidos, CONTACTOS y AJUSTES
 src/modulos/<pantalla>.js|css← una pantalla por módulo: hoy, calendario, pipeline, ventas, metricas, plantillas, reporte
 src/dev.html                 ← versión para desarrollar (enlaza los archivos sueltos)
 herramientas/ensamblar.py    ← genera crm-vdo.html desde src/
@@ -65,6 +79,8 @@ pruebas/modulos/<pantalla>.js← pruebas de cada pantalla
 docs/modelo-de-datos.md      ← tablas y campos
 docs/MODULOS.md              ← contrato para escribir o modificar una pantalla
 docs/pendientes-y-supuestos.md ← lo que falta confirmar con el negocio y lo que se asumió
+docs/alimentar-desde-el-chat.md ← guía para que Claude registre datos en el CRM desde cualquier chat
+skills/vdo-crm-nube/SKILL.md ← la misma guía empaquetada como skill de claude.ai
 ```
 
 Para regenerar el archivo único tras editar `src/`: `python3 herramientas/ensamblar.py`. Para correr las pruebas: `NODE_PATH=$(npm root -g) node pruebas/e2e.js` y `node pruebas/modulos/<pantalla>.js` (requiere Node 22 y Playwright con Chromium; correrlas una por una, no en paralelo).
@@ -79,6 +95,7 @@ Para regenerar el archivo único tras editar `src/`: `python3 herramientas/ensam
 | 4 | VENTAS, calculadora de grupos, EMBAJADORES | Lista |
 | 5 | MÉTRICAS, PLANTILLAS editables, REPORTE SEMANAL | Lista |
 | 6 | Guía final, pendientes y supuestos | Lista |
+| 7 | Versión en la nube: base de datos compartida de claude.ai, sincronización entre dispositivos y carga desde el chat | Lista |
 
 ## Reglas precargadas (resumen)
 

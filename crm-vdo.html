@@ -1235,7 +1235,13 @@ window.VDO_DATOS = (function () {
       if (!esObjeto(d.ui.filtros)) d.ui.filtros = {};
       if (!d.ui.pantalla) d.ui.pantalla = 'hoy';
       if (!d.plantillas.length) d.plantillas = clonar(D.PLANTILLAS).map(function (p) { p.activa = true; return p; });
-      if (!d.calendario.length || d.calendario.some(function (x) { return !fechaValida(x.fecha) || !esObjeto(x.cuotas); })) d.calendario = generarCalendario(d.config);
+      d.calendario = d.calendario.filter(function (x) { return fechaValida(x.fecha); });
+      if (!d.calendario.length) d.calendario = generarCalendario(d.config);
+      else if (d.calendario.some(function (x) { return !esObjeto(x.cuotas); })) {
+        var plan = {}; generarCalendario(d.config).forEach(function (x) { plan[x.fecha] = x; });
+        d.calendario.forEach(function (x) { if (esObjeto(x.cuotas)) return; var ref = plan[x.fecha]; if (ref) completarObjeto(x, ref); else x.cuotas = {}; });
+      }
+      d.calendario.sort(function (a, b) { return a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0; });
       d.contactos.forEach(function (c) {
         if (!c.id) c.id = nuevoId('c'); if (!c.estado) c.estado = 'activo'; if (!c.etapa) c.etapa = 'atraer';
         if (c.telefono) c.telefono = normTelefono(c.telefono) || c.telefono; if (c.telefono2) c.telefono2 = normTelefono(c.telefono2) || c.telefono2;
@@ -1245,6 +1251,7 @@ window.VDO_DATOS = (function () {
     },
     guardar: function () {
       this.datos.actualizado = ahoraISO();
+      if (NUBE.activa) { guardarUiLocal(); return sincronizarNube(); }
       try {
         localStorage.setItem(CLAVE, JSON.stringify(this.datos)); setEstado('Guardado ' + this.datos.actualizado.slice(11, 16)); this._falloGuardado = false; return true;
       } catch (e) {
@@ -1328,6 +1335,237 @@ window.VDO_DATOS = (function () {
     },
     restablecer: function () { this.datos = DB.vacio(); this.datos.ui.primeraVez = false; this.guardar(); }
   };
+
+  /* =========================== Nube (página publicada en claude.ai · capacidad db) =========================== */
+  /* Abierto como página publicada en claude.ai, window.claude.use('db') entrega una base compartida por artefacto que se ve
+     igual en todos los dispositivos de la misma cuenta y que Claude puede leer y escribir desde el chat. Cada registro es un
+     documento (colección = tabla, id del documento = id del registro; en calendario, la fecha) y la configuración vive en
+     config/principal. La memoria (DB.datos) sigue siendo la fuente para dibujar: guardar() compara cada registro con la
+     última copia sincronizada y escribe solo lo que cambió; los cambios hechos en otro dispositivo o desde el chat llegan
+     por onSnapshot y se aplican a la memoria. Abierto como archivo local no existe window.claude y todo sigue en
+     localStorage. Los filtros y preferencias de pantalla (datos.ui) son por dispositivo en los dos modos. */
+  var NUBE = { activa: false, cargada: false, db: null, user: null, sincronizado: {}, configJson: null, pendientes: {}, enVuelo: {}, esperando: {}, intentos: {}, fallos: {}, suscripciones: {}, ultimos: {}, bloqueada: false, motivoBloqueo: '', refrescoPendiente: false, _tRefresco: null, avisos: {}, vaciaAlCargar: false };
+  var CLAVE_UI = CLAVE + '-ui';
+  var MAX_EN_VUELO = 4;
+  function nubeDisponible() { return !!(window.claude && typeof window.claude.use === 'function'); }
+  function claveDe(t) { return t === 'calendario' ? 'fecha' : 'id'; }
+  function idValido(id) { return typeof id === 'string' && id !== '.' && id !== '..' && /^[A-Za-z0-9_\-.~:@+]{1,200}$/.test(id); }
+  function rutaDoc(t, id) { return t + '/' + id; }
+  function indiceDe(lista, k, id) { for (var i = 0; i < lista.length; i++) if (String(lista[i][k]) === id) return i; return -1; }
+  function avisoUnaVez(clave, msg, ms) { if (NUBE.avisos[clave]) return; NUBE.avisos[clave] = true; toast(msg, 'alerta', ms || 9000); setTimeout(function () { delete NUBE.avisos[clave]; }, 60000); }
+  function cargarUiLocal() {
+    var ui = null; try { var raw = localStorage.getItem(CLAVE_UI); if (raw) ui = JSON.parse(raw).ui; } catch (e) { ui = null; }
+    if (!esObjeto(ui)) ui = { pantalla: 'hoy', filtros: {} };
+    return ui;
+  }
+  function guardarUiLocal() { try { localStorage.setItem(CLAVE_UI, JSON.stringify({ ui: DB.datos.ui, guardado: ahoraISO() })); } catch (e) { } }
+  function registroDesdeDoc(t, doc) {
+    var b = doc.data(); if (!esObjeto(b)) return null;
+    var r = clonar(b); r[claveDe(t)] = doc.id;
+    if (t === 'ventas' && (typeof r.total !== 'number' || !Array.isArray(r.items))) { try { r = normalizarVenta(r); r.id = doc.id; } catch (e) { } }
+    return r;
+  }
+  function conectarNube() {
+    var usar = function (n) { try { return Promise.resolve(window.claude.use(n)).catch(function () { return null; }); } catch (e) { return Promise.resolve(null); } };
+    return Promise.all([usar('db'), usar('user')]).then(function (r) {
+      if (!r[0]) return false;
+      NUBE.db = r[0]; NUBE.user = r[1];
+      return cargarDesdeNube().then(function () { NUBE.activa = true; NUBE.cargada = true; return true; });
+    });
+  }
+  function suscribirTabla(t, alPrimero) {
+    var primero = true;
+    if (NUBE.suscripciones[t]) { try { NUBE.suscripciones[t](); } catch (e) { } }
+    NUBE.suscripciones[t] = NUBE.db.collection(t).onSnapshot(function (snap) {
+      NUBE.ultimos[t] = snap;
+      if (NUBE.cargada) aplicarSnapshotTabla(t, snap, primero); else if (primero && alPrimero) alPrimero();
+      primero = false;
+    }, function (e) { errorSuscripcion(t, e, alPrimero); });
+  }
+  function suscribirConfig(alPrimero) {
+    var primero = true;
+    if (NUBE.suscripciones.config) { try { NUBE.suscripciones.config(); } catch (e) { } }
+    NUBE.suscripciones.config = NUBE.db.doc('config/principal').onSnapshot(function (snap) {
+      NUBE.ultimos.config = snap;
+      if (NUBE.cargada) aplicarSnapshotConfig(snap); else if (primero && alPrimero) alPrimero();
+      primero = false;
+    }, function (e) { errorSuscripcion('config', e, alPrimero); });
+  }
+  function errorSuscripcion(origen, e, alPrimero) {
+    var code = (e && e.code) || 'unavailable';
+    if (!NUBE.cargada) { if (alPrimero) alPrimero(new Error('No se pudo leer ' + origen + ' de la nube (' + code + ')')); return; }
+    if (code === 'revoked' || code === 'not_granted' || code === 'capability_disabled' || code === 'capability_removed') { bloquearNube('se perdió el acceso a la nube'); return; }
+    // puente caído u otro error terminal: una nueva suscripción es la única recuperación
+    setTimeout(function () { if (NUBE.bloqueada) return; if (origen === 'config') suscribirConfig(); else suscribirTabla(origen); }, 3000 + Math.random() * 2000);
+  }
+  function cargarDesdeNube() {
+    return new Promise(function (resolver, rechazar) {
+      var faltan = TABLAS.length + 1; var terminado = false;
+      var temporizador = setTimeout(function () { if (!terminado) { terminado = true; rechazar(new Error('La nube no respondió en 25 segundos')); } }, 25000);
+      function listo(err) {
+        if (terminado) return;
+        if (err) { terminado = true; clearTimeout(temporizador); rechazar(err); return; }
+        if (--faltan === 0) { terminado = true; clearTimeout(temporizador); resolver(); }
+      }
+      TABLAS.forEach(function (t) { suscribirTabla(t, listo); });
+      suscribirConfig(listo);
+    }).then(construirDesdeNube);
+  }
+  function construirDesdeNube() {
+    var d = { version: VERSION_ESQUEMA, creado: ahoraISO(), actualizado: ahoraISO(), config: null, ui: cargarUiLocal() };
+    var vacia = true;
+    TABLAS.forEach(function (t) {
+      var sinc = NUBE.sincronizado[t] = {}; d[t] = []; var snap = NUBE.ultimos[t];
+      ((snap && snap.docs) || []).forEach(function (doc) { var r = registroDesdeDoc(t, doc); if (!r) return; vacia = false; d[t].push(r); sinc[doc.id] = JSON.stringify(r); });
+    });
+    var sc = NUBE.ultimos.config;
+    if (sc && sc.exists && esObjeto(sc.data())) { d.config = clonar(sc.data()); NUBE.configJson = JSON.stringify(d.config); vacia = false; } else NUBE.configJson = null;
+    NUBE.vaciaAlCargar = vacia;
+    DB.datos = d; DB.migrar();
+  }
+  function aplicarSnapshotTabla(t, snap, completo) {
+    var d = DB.datos; var k = claveDe(t); var sinc = NUBE.sincronizado[t] || (NUBE.sincronizado[t] = {}); var hubo = false;
+    function propio(id) { var ruta = rutaDoc(t, id); return !!(NUBE.enVuelo[ruta] || NUBE.pendientes[ruta] || NUBE.esperando[ruta]); }
+    function poner(doc) {
+      var id = doc.id; if (propio(id)) return;
+      var r = registroDesdeDoc(t, doc); if (!r) return; var json = JSON.stringify(r);
+      if (sinc[id] === json) return;
+      sinc[id] = json; var i = indiceDe(d[t], k, id); if (i >= 0) d[t][i] = r; else d[t].push(r); hubo = true;
+    }
+    function quitar(id) {
+      if (propio(id) || sinc[id] === undefined) return;
+      delete sinc[id]; var antes = d[t].length; d[t] = d[t].filter(function (x) { return String(x[k]) !== id; }); if (d[t].length !== antes) hubo = true;
+    }
+    if (completo) {
+      var presentes = {}; snap.docs.forEach(function (doc) { presentes[doc.id] = true; poner(doc); });
+      Object.keys(sinc).forEach(function (id) { if (!presentes[id]) quitar(id); });
+    } else {
+      snap.docChanges().forEach(function (ch) { if (ch.type === 'removed') quitar(ch.doc.id); else poner(ch.doc); });
+    }
+    if (hubo) cambiosDesdeFuera();
+  }
+  function aplicarSnapshotConfig(snap) {
+    if (NUBE.enVuelo['config/principal'] || NUBE.pendientes['config/principal'] || NUBE.esperando['config/principal']) return;
+    if (!snap.exists || !esObjeto(snap.data())) { if (NUBE.configJson === null) return; NUBE.configJson = null; DB.guardarPronto(); return; }
+    var json = JSON.stringify(snap.data()); if (json === NUBE.configJson) return;
+    NUBE.configJson = json; DB.datos.config = clonar(snap.data()); cambiosDesdeFuera();
+  }
+  function cambiosDesdeFuera() { clearTimeout(NUBE._tRefresco); NUBE._tRefresco = setTimeout(intentarRefresco, 300); }
+  function intentarRefresco() {
+    var modalAbierto = !$('modal').hidden; var ae = document.activeElement; var escribiendo = !!(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.type !== 'search');
+    if (modalAbierto || escribiendo) { NUBE.refrescoPendiente = true; clearTimeout(NUBE._tRefresco); NUBE._tRefresco = setTimeout(intentarRefresco, 3000); return; }
+    NUBE.refrescoPendiente = false; DB.migrar(); DB.guardarPronto(); refrescar(); toast('Datos actualizados desde la nube', '', 2500);
+  }
+  function sincronizarNube() {
+    if (NUBE.bloqueada) { actualizarEstadoNube(); return false; }
+    var d = DB.datos;
+    TABLAS.forEach(function (t) {
+      var k = claveDe(t); var vistos = {}; var sinc = NUBE.sincronizado[t] || (NUBE.sincronizado[t] = {});
+      d[t].forEach(function (r) {
+        if (!esObjeto(r)) return;
+        if (k === 'id' && !r.id) r.id = nuevoId(t.slice(0, 1));
+        var id = String(r[k] == null ? '' : r[k]);
+        if (!idValido(id)) { avisoUnaVez('id-' + t, 'Un registro de ' + t + ' tiene un identificador que la nube no acepta ("' + id.slice(0, 30) + '") y no se sincroniza.'); return; }
+        if (vistos[id]) { avisoUnaVez('dup-' + t, 'Hay dos registros de ' + t + ' con el mismo identificador ' + id + '; solo se sincroniza el primero.'); return; }
+        vistos[id] = true;
+        var json = JSON.stringify(r);
+        if (sinc[id] !== json) encolar(t, id, json);
+      });
+      Object.keys(sinc).forEach(function (id) { if (!vistos[id]) encolar(t, id, null); });
+    });
+    var cj = JSON.stringify(d.config); if (NUBE.configJson !== cj) encolar('config', 'principal', cj);
+    procesarCola(); actualizarEstadoNube(); return true;
+  }
+  function encolar(t, id, json) {
+    var ruta = rutaDoc(t, id);
+    if (NUBE.fallos[ruta] && NUBE.fallos[ruta].json === json) return; // ya falló con este mismo contenido; no insistir
+    NUBE.pendientes[ruta] = { t: t, id: id, json: json };
+  }
+  function hayPendientesNube() { return Object.keys(NUBE.pendientes).length + Object.keys(NUBE.enVuelo).length > 0; }
+  function procesarCola() {
+    if (NUBE.bloqueada) return;
+    var rutas = Object.keys(NUBE.pendientes);
+    for (var i = 0; i < rutas.length; i++) {
+      if (Object.keys(NUBE.enVuelo).length >= MAX_EN_VUELO) break;
+      var ruta = rutas[i]; if (NUBE.enVuelo[ruta] || NUBE.esperando[ruta]) continue;
+      var p = NUBE.pendientes[ruta]; delete NUBE.pendientes[ruta]; NUBE.enVuelo[ruta] = p;
+      escribirDoc(p).then(alEscribir(ruta, p), alFallar(ruta, p));
+    }
+  }
+  function escribirDoc(p) {
+    try { var ref = NUBE.db.doc(rutaDoc(p.t, p.id)); return p.json === null ? ref.delete() : ref.set(JSON.parse(p.json)); }
+    catch (e) { return Promise.reject({ code: 'invalid_argument', message: e && e.message }); }
+  }
+  function alEscribir(ruta, p) {
+    return function () {
+      delete NUBE.enVuelo[ruta]; delete NUBE.intentos[ruta]; delete NUBE.fallos[ruta];
+      if (p.t === 'config') NUBE.configJson = p.json;
+      else { var sinc = NUBE.sincronizado[p.t] || (NUBE.sincronizado[p.t] = {}); if (p.json === null) delete sinc[p.id]; else sinc[p.id] = p.json; }
+      procesarCola(); actualizarEstadoNube();
+    };
+  }
+  function alFallar(ruta, p) {
+    return function (e) {
+      delete NUBE.enVuelo[ruta]; var code = (e && e.code) || 'unavailable';
+      if (code === 'unavailable' || code === 'resource_exhausted') {
+        var n = NUBE.intentos[ruta] = (NUBE.intentos[ruta] || 0) + 1;
+        if (n <= 6) {
+          if (!NUBE.pendientes[ruta]) NUBE.pendientes[ruta] = p;
+          NUBE.esperando[ruta] = true;
+          setTimeout(function () { delete NUBE.esperando[ruta]; procesarCola(); }, Math.min(30000, 500 * Math.pow(2, n)) + Math.random() * 500);
+          actualizarEstadoNube(); return;
+        }
+      }
+      if (code === 'revoked' || code === 'not_granted' || code === 'capability_disabled' || code === 'capability_removed') { if (!NUBE.pendientes[ruta]) NUBE.pendientes[ruta] = p; bloquearNube('se perdió el acceso a la nube'); return; }
+      NUBE.fallos[ruta] = { json: p.json, code: code, mensaje: (e && e.message) || '' };
+      avisoUnaVez('fallo-' + code, 'No se pudo guardar en la nube (' + code + (e && e.message ? ': ' + e.message : '') + '). Descarga un respaldo JSON para no perder los cambios.', 10000);
+      procesarCola(); actualizarEstadoNube();
+    };
+  }
+  function bloquearNube(motivo) {
+    if (NUBE.bloqueada) return; NUBE.bloqueada = true; NUBE.motivoBloqueo = motivo;
+    actualizarEstadoNube(); toast('La nube dejó de responder (' + motivo + '). Los cambios de ahora en adelante NO se guardan: descarga un respaldo JSON y vuelve a abrir la página.', 'alerta', 15000);
+  }
+  function estadoNubeTexto() {
+    var pend = Object.keys(NUBE.pendientes).length + Object.keys(NUBE.enVuelo).length; var fallos = Object.keys(NUBE.fallos).length;
+    if (NUBE.bloqueada) return 'NO SINCRONIZADO: ' + NUBE.motivoBloqueo;
+    if (pend) return 'Sincronizando… ' + pend + (pend === 1 ? ' cambio' : ' cambios');
+    if (fallos) return 'NO SINCRONIZADO: ' + fallos + (fallos === 1 ? ' registro rechazado' : ' registros rechazados');
+    return 'Sincronizado ' + ahoraISO().slice(11, 16);
+  }
+  function actualizarEstadoNube() { setEstado(estadoNubeTexto(), NUBE.bloqueada || Object.keys(NUBE.fallos).length > 0); }
+  function datosLocalesPendientes() {
+    // Datos guardados en localStorage por una versión anterior de la página (o por el archivo local en este mismo origen)
+    var raw = null; try { raw = localStorage.getItem(CLAVE); } catch (e) { return null; }
+    if (!raw) return null; var d = null; try { d = JSON.parse(raw); } catch (e) { return null; }
+    if (!esObjeto(d)) return null;
+    var reales = 0; ['contactos', 'interacciones', 'ventas', 'embajadores', 'cuentas'].forEach(function (t) { (Array.isArray(d[t]) ? d[t] : []).forEach(function (x) { if (esObjeto(x) && !x.prueba) reales++; }); });
+    return reales ? d : null;
+  }
+  function ofrecerMigracionLocal(forzar) {
+    var ui = DB.datos.ui; if (!forzar && ui.localRevisado) return;
+    var local = datosLocalesPendientes(); if (!local) { if (forzar) toast('No hay datos guardados en este navegador'); return; }
+    var n = function (t) { return (Array.isArray(local[t]) ? local[t] : []).filter(function (x) { return esObjeto(x) && !x.prueba; }).length; };
+    abrirModal('<h3>Datos guardados en este navegador</h3><p>Este navegador tiene datos de una versión anterior del CRM: ' + entero(n('contactos')) + ' contactos, ' + entero(n('interacciones')) + ' interacciones, ' + entero(n('ventas')) + ' ventas, ' + entero(n('embajadores')) + ' embajadores y ' + entero(n('cuentas')) + ' cuentas. ¿Los subo a la nube? Se fusionan con lo que ya hay (no se duplican contactos por teléfono o correo).</p><div class="acciones"><button class="btn" data-nube="no">Ahora no</button><button class="btn primario" data-nube="si">Subir a la nube</button></div>');
+    qs('[data-nube="si"]', $('modalContenido')).onclick = function () {
+      var json = { formato: 'vdo-crm-respaldo', version: VERSION_ESQUEMA, tablas: {}, config: esObjeto(local.config) ? local.config : null };
+      TABLAS.forEach(function (t) { json.tablas[t] = (Array.isArray(local[t]) ? local[t] : []).filter(function (x) { return esObjeto(x) && !x.prueba; }); });
+      json.tablas.calendario = []; json.tablas.plantillas = []; // el plan ya está en la nube; se suben solo los datos de trabajo
+      var r = DB.importar(json, 'fusionar'); ui.localRevisado = true; DB.guardar(); cerrarModal();
+      toast('Subidos a la nube: ' + (r.contactos ? r.contactos.nuevos + ' contactos nuevos' : '') + '. La sincronización puede tardar un momento.', '', 6000); refrescar();
+    };
+    qs('[data-nube="no"]', $('modalContenido')).onclick = function () { ui.localRevisado = true; DB.guardar(); cerrarModal(); };
+  }
+  function mostrarConectando() {
+    $('p-hoy').innerHTML = '<div class="tarjeta"><h3>Conectando con la nube…</h3><p class="texto2">Cargando tus datos desde claude.ai. Si tarda más de medio minuto, recarga la página.</p></div>';
+    setEstado('Conectando…');
+  }
+  function mostrarErrorNube(e) {
+    setEstado('SIN NUBE', true);
+    $('p-hoy').innerHTML = '<div class="tarjeta borde-alerta"><h3>No se pudo conectar con la nube</h3><p>' + esc((e && e.message) || 'Error desconocido') + '</p><p class="texto2">Puedes reintentar o trabajar solo en este navegador (los cambios quedarán aquí hasta que vuelvas a conectar y los subas desde Ajustes → Datos).</p><div class="acciones"><button class="btn primario" id="nubeReintentar">Reintentar</button><button class="btn" id="nubeLocal">Trabajar en este navegador</button></div></div>';
+    $('nubeReintentar').onclick = function () { location.reload(); };
+    $('nubeLocal').onclick = function () { NUBE.activa = false; NUBE.cargada = false; arrancarLocal(); };
+  }
 
   /* =========================== Calendario =========================== */
   function generarCalendario(config) {
@@ -1841,10 +2079,11 @@ window.VDO_DATOS = (function () {
   function ajustesDatos() {
     var d = DB.datos; var prueba = TABLAS.reduce(function (n, t) { return n + d[t].filter(function (x) { return x.prueba; }).length; }, 0);
     var tam = 0; try { tam = (localStorage.getItem(CLAVE) || '').length; } catch (e) { }
-    return '<div class="grid-2">' +
+    var tarjetaNube = NUBE.activa ? '<div class="tarjeta oro"><h3>Nube de claude.ai</h3><p class="texto2">Los datos se guardan en la base de esta página en claude.ai y se ven igual en todos tus dispositivos. Claude también puede agregar contactos, ventas e interacciones desde el chat (guía en <code>docs/alimentar-desde-el-chat.md</code>).</p><p class="texto3">Estado: ' + esc(estadoNubeTexto()) + '</p>' + (datosLocalesPendientes() ? '<div class="acciones"><button class="btn" data-accion="subir-local">Subir a la nube los datos guardados en este navegador</button></div>' : '') + '</div>' : '';
+    return tarjetaNube + '<div class="grid-2">' +
       '<div class="tarjeta"><h3>Importar contactos desde CSV</h3><p class="texto2">Agenda de Google o del celular, base de WhatsApp Business o base Breca. Detecta columnas, normaliza teléfonos a +51 y evita duplicados por teléfono o correo.</p><div class="acciones"><button class="btn primario" data-accion="importar-csv">Elegir archivo CSV</button></div>' +
       '<details class="ayuda"><summary>Cómo exportar mi agenda</summary><ul><li><b>Google Contacts:</b> contacts.google.com → Exportar → Google CSV.</li><li><b>iPhone:</b> iCloud.com → Contactos → exportar vCard y convertir a CSV, o usar la app Contactos de Google.</li><li><b>WhatsApp Business:</b> los contactos viven en la agenda del celular; exporta la agenda. Las etiquetas de WhatsApp no se exportan: usa la columna Segmento o elige el segmento al importar.</li><li><b>Base Breca:</b> cualquier CSV con columnas nombre, empresa, cargo, correo y celular.</li></ul></details></div>' +
-      '<div class="tarjeta"><h3>Respaldo completo (JSON)</h3><p class="texto2">Descarga todo (contactos, interacciones, ventas, embajadores, cuentas, calendario, plantillas y configuración). Hazlo al final de cada día.</p><div class="acciones"><button class="btn primario" data-accion="exportar-json">Descargar respaldo</button><button class="btn" data-accion="importar-json">Restaurar o fusionar un respaldo</button></div><p class="texto3">Último guardado: ' + esc(fechaHora(d.actualizado)) + ' · ' + (tam / 1024).toFixed(0) + ' KB en este navegador.</p></div>' +
+      '<div class="tarjeta"><h3>Respaldo completo (JSON)</h3><p class="texto2">Descarga todo (contactos, interacciones, ventas, embajadores, cuentas, calendario, plantillas y configuración). Hazlo al final de cada día.</p><div class="acciones"><button class="btn primario" data-accion="exportar-json">Descargar respaldo</button><button class="btn" data-accion="importar-json">Restaurar o fusionar un respaldo</button></div><p class="texto3">' + (NUBE.activa ? 'Último cambio: ' + esc(fechaHora(d.actualizado)) + ' · guardado en la nube.' : 'Último guardado: ' + esc(fechaHora(d.actualizado)) + ' · ' + (tam / 1024).toFixed(0) + ' KB en este navegador.') + '</p></div>' +
       '<div class="tarjeta"><h3>Exportar a CSV por tabla</h3><div class="acciones">' + TABLAS.map(function (t) { return '<button class="btn chico" data-accion="exportar-csv" data-tabla="' + t + '">' + t + ' (' + entero(d[t].length) + ')</button>'; }).join('') + '</div></div>' +
       '<div class="tarjeta"><h3>Base del Centro de Mando</h3><p class="texto2">El archivo <code>datos/centro-de-mando.json</code> del repositorio trae los 729 contactos, 42 pedidos, alianzas y el maestro de SKU del registro web. Cárgalo con "Restaurar o fusionar un respaldo" en modo fusionar.</p></div>' +
       '<div class="tarjeta"><h3>Datos de prueba</h3><p class="texto2">' + (prueba ? prueba + ' registros de prueba cargados (marcados con la etiqueta "prueba").' : 'No hay datos de prueba cargados.') + '</p><div class="acciones">' + (prueba ? '<button class="btn peligro" data-accion="borrar-prueba">Borrar datos de prueba</button>' : '<button class="btn" data-accion="cargar-prueba">Cargar datos de prueba</button>') + '</div></div>' +
@@ -2230,6 +2469,7 @@ window.VDO_DATOS = (function () {
       case 'importar-json': $('archivoJson').click(); break;
       case 'importar-csv': $('archivoCsv').click(); break;
       case 'borrar-prueba': confirmar('¿Borrar los datos de prueba? Tus datos reales no se tocan.', function () { var n = DB.borrarPrueba(); toast(n + ' registros de prueba borrados'); refrescar(); }, 'Borrar'); break;
+      case 'subir-local': ofrecerMigracionLocal(true); break;
       case 'cargar-prueba': { var n = DB.cargarPrueba(); toast(n + ' registros de prueba cargados'); refrescar(); break; }
       case 'restablecer': confirmar('Esto borra TODO (contactos, ventas, calendario editado) y vuelve a los datos precargados. ¿Descargaste un respaldo?', function () { DB.restablecer(); toast('CRM restablecido'); navegar('hoy'); }, 'Sí, borrar todo'); break;
       case 'recalcular-calendario': {
@@ -2250,8 +2490,23 @@ window.VDO_DATOS = (function () {
   /* =========================== Arranque =========================== */
   function iniciar() {
     prepararDescargas();
+    if (nubeDisponible()) {
+      mostrarConectando();
+      conectarNube().then(function (ok) {
+        if (ok) { arrancar(); DB.guardar(); ofrecerMigracionLocal(false); }
+        else { toast('Esta página no tiene acceso a la base en la nube: los datos quedan en este navegador.', 'alerta', 8000); arrancarLocal(); }
+      }, mostrarErrorNube);
+    } else arrancarLocal();
+  }
+  function arrancarLocal() {
     DB.cargar();
     if (DB.datos.ui.primeraVez) { DB.cargarPrueba(); DB.datos.ui.primeraVez = false; DB.guardar(); }
+    arrancar();
+  }
+  var arrancado = false;
+  function arrancar() {
+    if (arrancado) { navegar(DB.datos.ui.pantalla || 'hoy'); return; }
+    arrancado = true;
     mantenimientoDiario();
     $('hoyFecha').textContent = fechaCorta(hoyISO());
     document.body.addEventListener('click', function (ev) {
@@ -2272,9 +2527,12 @@ window.VDO_DATOS = (function () {
     $('modal').addEventListener('mousedown', function (ev) { fondoPulsado = ev.target === $('modal'); });
     $('modal').addEventListener('click', function (ev) { if (ev.target === $('modal') && fondoPulsado) cerrarModal(); fondoPulsado = false; });
     document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('modal').hidden) cerrarModal(); });
-    window.addEventListener('beforeunload', function () { if (DB._timer) { clearTimeout(DB._timer); DB._timer = null; DB.guardar(); } });
+    window.addEventListener('beforeunload', function (ev) {
+      if (DB._timer) { clearTimeout(DB._timer); DB._timer = null; DB.guardar(); }
+      if (NUBE.activa && hayPendientesNube()) { ev.preventDefault(); ev.returnValue = ''; }
+    });
     window.addEventListener('storage', function (ev) {
-      if (ev.key !== CLAVE || !ev.newValue) return;
+      if (NUBE.activa || ev.key !== CLAVE || !ev.newValue) return;
       if (DB._timer) { toast('Hay otra pestaña del CRM abierta con cambios. Cierra una para no perder datos.', 'alerta', 8000); return; }
       try { var otro = JSON.parse(ev.newValue); if (esObjeto(otro)) { DB.datos = otro; DB.migrar(); refrescar(); toast('Datos actualizados desde otra pestaña'); } } catch (e) { }
     });
@@ -2289,7 +2547,8 @@ window.VDO_DATOS = (function () {
     ventas: { formVenta: formVenta, catalogoVenta: catalogoVenta, normalizarVenta: normalizarVenta, totalVenta: totalVenta, lineaDe: lineaDe },
     importar: { fusionarContactos: fusionarContactos, filasAContactos: filasAContactos, asistenteCSV: asistenteCSV, importarJSONDialogo: importarJSONDialogo },
     ui: { navegar: navegar, refrescar: refrescar, toast: toast, abrirModal: abrirModal, cerrarModal: cerrarModal, confirmar: confirmar, copiar: copiar, formContacto: formContacto, formVenta: formVenta, opciones: opciones, opcionesSegmentos: opcionesSegmentos, opcionesEtapas: opcionesEtapas, campo: campo, inp: inp, leerForm: leerForm, $: $, qs: qs, qsa: qsa },
-    registrarPantalla: registrarPantalla, registrarAccion: registrarAccion, generarCalendario: generarCalendario
+    registrarPantalla: registrarPantalla, registrarAccion: registrarAccion, generarCalendario: generarCalendario,
+    nube: { activa: function () { return NUBE.activa; }, estado: estadoNubeTexto, pendientes: function () { return Object.keys(NUBE.pendientes).length + Object.keys(NUBE.enVuelo).length; }, fallos: function () { return clonar(NUBE.fallos); }, sincronizar: function () { return DB.guardar(); } }
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
