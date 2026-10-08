@@ -1,0 +1,7 @@
+/* reporte.css · Pantalla REPORTE SEMANAL */
+.rep-texto { white-space: pre-wrap; font: 13px/1.5 var(--mono); color: var(--texto); background: var(--superficie2); border-left: 2px solid var(--oro-suave); padding: 14px 16px; border-radius: var(--radio); margin: 0; overflow-wrap: anywhere; }
+.rep-barra .form-grid { max-width: 420px; }
+.rep-hist { list-style: none; margin: 0; padding: 0; }
+.rep-hist li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 0; border-bottom: 1px solid var(--borde); font-size: 13.5px; }
+.rep-hist li:last-child { border-bottom: none; }
+.rep-hist .acciones { margin: 0; margin-left: auto; }

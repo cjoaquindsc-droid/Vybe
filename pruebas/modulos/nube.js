@@ -1,0 +1,122 @@
+/* Pruebas del modo nube (capacidad db de claude.ai) con una base simulada. Uso: NODE_PATH=$(npm root -g) node pruebas/modulos/nube.js */
+const path = require('path'); const fs = require('fs'); const { chromium } = require('playwright');
+const RAIZ = path.resolve(__dirname, '..', '..'); const ARCHIVO = 'file://' + (process.env.CRM_HTML || path.join(RAIZ, 'crm-vdo.html'));
+let fallos = 0; function ok(c, m) { if (c) console.log('  ✓ ' + m); else { fallos++; console.log('  ✗ ' + m); } }
+const FAKE = () => {
+  const clone = o => JSON.parse(JSON.stringify(o));
+  let store = {}; try { store = JSON.parse(localStorage.getItem('__nube_fake') || '{}'); } catch (e) { store = {}; }
+  const persistir = () => { try { localStorage.setItem('__nube_fake', JSON.stringify(store)); } catch (e) { } };
+  const listeners = []; const log = [];
+  const snapDoc = (id, body) => { const d = body === undefined ? undefined : clone(body); return { id, exists: d !== undefined, data: () => d, metadata: { fromCache: false, hasPendingWrites: false } }; };
+  const colSnap = (l) => { const col = store[l.path] || {}; const ids = Object.keys(col).sort(); const docs = ids.map(id => snapDoc(id, col[id])); const changes = []; const now = {};
+    ids.forEach((id, i) => { const j = JSON.stringify(col[id]); now[id] = j; if (!(id in l.seen)) changes.push({ type: 'added', doc: docs[i], oldIndex: -1, newIndex: i }); else if (l.seen[id] !== j) changes.push({ type: 'modified', doc: docs[i], oldIndex: i, newIndex: i }); });
+    Object.keys(l.seen).forEach(id => { if (!(id in now)) changes.push({ type: 'removed', doc: snapDoc(id, JSON.parse(l.seen[id])), oldIndex: -1, newIndex: -1 }); });
+    l.seen = now; return { docs, size: docs.length, empty: !docs.length, docChanges: () => changes, metadata: { fromCache: false, hasPendingWrites: false } }; };
+  const notify = (p) => { const c = p.split('/')[0]; listeners.forEach(l => { if (l.tipo === 'col' && l.path === c) setTimeout(() => l.cb(colSnap(l)), 5); if (l.tipo === 'doc' && l.path === p) setTimeout(() => l.cb(snapDoc(p.split('/')[1], (store[c] || {})[p.split('/')[1]])), 5); }); };
+  window.__nube = { get store() { return store; }, log, lento: 2, fallar: null, codigo: 'unavailable', escribir(c, id, body) { (store[c] = store[c] || {})[id] = clone(body); persistir(); notify(c + '/' + id); }, borrar(c, id) { if (store[c]) delete store[c][id]; persistir(); notify(c + '/' + id); }, limpiar() { store = {}; persistir(); } };
+  const docRef = (c, id) => { const p = c + '/' + id; return { id, path: p,
+    get: () => Promise.resolve(snapDoc(id, (store[c] || {})[id])),
+    set: (body) => new Promise((res, rej) => { log.push(['set', p]); setTimeout(() => { if (window.__nube.fallar && window.__nube.fallar(p)) return rej({ code: window.__nube.codigo, message: 'simulado' }); (store[c] = store[c] || {})[id] = clone(body); persistir(); notify(p); res(); }, window.__nube.lento); }),
+    update: () => Promise.reject({ code: 'invalid_argument', message: 'no usado' }),
+    delete: () => new Promise((res) => { log.push(['delete', p]); setTimeout(() => { if (store[c]) delete store[c][id]; persistir(); notify(p); res(); }, window.__nube.lento); }),
+    onSnapshot: (cb, err) => { const l = { tipo: 'doc', path: p, cb, err }; listeners.push(l); setTimeout(() => cb(snapDoc(id, (store[c] || {})[id])), 5); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; } }; };
+  const db = { doc: (p) => { const s = p.split('/'); if (s.length !== 2 || !/^[A-Za-z0-9_\-.~:@+]+$/.test(s[1])) throw new TypeError('ruta inválida ' + p); return docRef(s[0], s[1]); },
+    collection: (c) => ({ path: c, doc: (id) => docRef(c, id), onSnapshot: (cb, err) => { const l = { tipo: 'col', path: c, cb, err, seen: {} }; listeners.push(l); setTimeout(() => cb(colSnap(l)), 5); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; } }) };
+  const user = { isOwner: () => Promise.resolve(true), canEdit: () => Promise.resolve(true), can: () => Promise.resolve(true), id: () => Promise.resolve('u_prueba') };
+  window.claude = { use: (n) => new Promise(r => setTimeout(() => r(window.__sinDb ? null : n === 'db' ? db : n === 'user' ? user : null), 20)) };
+};
+(async () => {
+  const browser = await chromium.launch(); const errores = [];
+  const ctx = await browser.newContext({ viewport: { width: 1366, height: 860 }, locale: 'es-PE', timezoneId: 'America/Lima' }); const page = await ctx.newPage();
+  page.on('pageerror', e => errores.push(String(e))); page.on('console', m => { if (m.type() === 'error') errores.push(m.text()); });
+  await page.addInitScript(FAKE);
+  const espera = async (fn, ms = 4000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await page.evaluate(fn)) return true; await page.waitForTimeout(60); } return false; };
+  const sinPendientes = () => espera(() => VDO.nube.pendientes() === 0 && /^Sincronizado/.test(VDO.nube.estado()), 15000);
+  console.log('1. Primer arranque con la nube vacía');
+  await page.goto(ARCHIVO); await page.evaluate(() => { localStorage.clear(); }); await page.reload();
+  await page.waitForFunction(() => window.VDO && VDO.nube && VDO.nube.activa(), null, { timeout: 15000 });
+  ok(await sinPendientes(), 'termina de sincronizar: ' + (await page.evaluate(() => VDO.nube.estado())));
+  const st = await page.evaluate(() => ({ cal: Object.keys(__nube.store.calendario || {}).length, pl: Object.keys(__nube.store.plantillas || {}).length, cfg: !!(__nube.store.config && __nube.store.config.principal), cont: Object.keys(__nube.store.contactos || {}).length, cal7: __nube.store.calendario && __nube.store.calendario['2026-10-07'] }));
+  ok(st.cal === 73 && st.pl === 28 && st.cfg && st.cont === 0, 'siembra el plan en la nube (73 días, 28 plantillas, config) sin datos de prueba: ' + JSON.stringify({ cal: st.cal, pl: st.pl, cfg: st.cfg, cont: st.cont }));
+  ok(st.cal7 && st.cal7.fecha === '2026-10-07' && typeof st.cal7.metaDia === 'number', 'el calendario usa la fecha como id de documento');
+  ok(await page.$eval('#p-hoy', e => !e.hidden && !/Conectando/.test(e.textContent)), 'la pantalla HOY se dibuja al terminar de conectar');
+  console.log('2. Escrituras propias');
+  await page.evaluate(() => { VDO.DB.upsert('contactos', { id: 'c_n1', nombre: 'Nube Uno', telefono: '+51 900 000 001', segmento: 'boca', etapa: 'atraer', estado: 'activo' }); });
+  ok(await espera(() => __nube.store.contactos && __nube.store.contactos.c_n1 && __nube.store.contactos.c_n1.nombre === 'Nube Uno'), 'upsert escribe el documento contactos/c_n1');
+  await sinPendientes(); const antes = await page.evaluate(() => __nube.log.length);
+  await page.evaluate(() => { var c = VDO.DB.buscar('contactos', 'c_n1'); c.nombre = 'Nube Uno Editado'; VDO.DB.upsert('contactos', c); });
+  ok(await espera(() => __nube.store.contactos.c_n1.nombre === 'Nube Uno Editado'), 'editar vuelve a escribir solo ese documento');
+  await sinPendientes();
+  ok((await page.evaluate(() => __nube.log.length)) - antes === 1, 'una sola escritura por cambio (no reescribe lo que no cambió)');
+  await page.evaluate(() => VDO.DB.eliminar('contactos', 'c_n1'));
+  ok(await espera(() => !__nube.store.contactos.c_n1), 'eliminar borra el documento');
+  await sinPendientes();
+  console.log('3. Cambios externos (otro dispositivo o el chat)');
+  await page.click('.nav [data-pantalla="contactos"]'); await page.waitForTimeout(200);
+  await page.evaluate(() => __nube.escribir('contactos', 'c_chat1', { nombre: 'Desde El Chat', telefono: '999888777', segmento: 'recontacto', consentimiento: true }));
+  ok(await espera(() => { var c = VDO.DB.buscar('contactos', 'c_chat1'); return c && c.telefono === '+51999888777' && c.etapa === 'atraer' && c.estado === 'activo'; }, 6000), 'un contacto escrito desde fuera entra en memoria y se normaliza (teléfono +51, etapa, estado)');
+  ok(await espera(() => /Desde El Chat/.test(document.getElementById('p-contactos').textContent), 6000), 'la pantalla se vuelve a dibujar sola');
+  ok(await espera(() => __nube.store.contactos.c_chat1.telefono === '+51999888777', 8000), 'la versión normalizada vuelve a la nube');
+  await sinPendientes();
+  await page.evaluate(() => __nube.escribir('ventas', 'v_chat1', { contactoId: 'c_chat1', fecha: '2026-10-07', items: [{ productoId: 'gold700', nombre: 'Gold', cantidad: 2, precio: 89.9, linea: 'botellas', botellas: 1 }], estado: 'pagado' }));
+  ok(await espera(() => { var v = VDO.DB.buscar('ventas', 'v_chat1'); return v && Math.abs(v.total - 179.8) < 0.01 && v.linea === 'botellas'; }, 6000), 'una venta escrita desde fuera sin total se normaliza (total 179.80)');
+  await page.evaluate(() => __nube.escribir('contactos', 'c_chat1', Object.assign({}, __nube.store.contactos.c_chat1, { nombre: 'Desde El Chat Dos' })));
+  ok(await espera(() => VDO.DB.buscar('contactos', 'c_chat1').nombre === 'Desde El Chat Dos', 6000), 'una modificación externa reemplaza el registro');
+  await page.evaluate(() => __nube.borrar('ventas', 'v_chat1'));
+  ok(await espera(() => !VDO.DB.buscar('ventas', 'v_chat1'), 6000), 'un borrado externo quita el registro');
+  await sinPendientes();
+  console.log('4. No interrumpe mientras se edita');
+  await page.click('[data-accion="nuevo-contacto"]'); await page.waitForSelector('#formContacto');
+  await page.fill('#formContacto [name="nombre"]', 'Escribiendo Ahora');
+  await page.evaluate(() => __nube.escribir('contactos', 'c_chat2', { nombre: 'Llega Mientras Edito', telefono: '+51 911 111 111', segmento: 'boca' }));
+  await page.waitForTimeout(900);
+  ok((await page.evaluate(() => !!VDO.DB.buscar('contactos', 'c_chat2'))) && (await page.$('#formContacto')) !== null && (await page.$eval('#formContacto [name="nombre"]', e => e.value)) === 'Escribiendo Ahora', 'el dato entra en memoria pero el formulario abierto no se cierra ni se pierde lo escrito');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(100);
+  ok(await espera(() => /Llega Mientras Edito/.test(document.getElementById('p-contactos').textContent), 6000), 'al cerrar el formulario la pantalla se actualiza');
+  await sinPendientes();
+  console.log('5. Persistencia entre recargas y preferencias por dispositivo');
+  await page.fill('#p-contactos .filtros input[name="texto"]', 'Chat'); await page.waitForTimeout(500);
+  await page.reload(); await page.waitForFunction(() => window.VDO && VDO.nube && VDO.nube.activa(), null, { timeout: 15000 }); await sinPendientes();
+  ok((await page.evaluate(() => VDO.DB.tabla('contactos').length)) === 2 && (await page.evaluate(() => VDO.DB.tabla('calendario').length)) === 73, 'al recargar carga todo desde la nube (2 contactos, 73 días)');
+  ok((await page.evaluate(() => (VDO.DB.datos.ui.filtros.contactos || {}).texto)) === 'Chat' && !(await page.evaluate(() => __nube.store.ui)), 'los filtros se guardan en este navegador y no en la nube');
+  ok((await page.evaluate(() => __nube.log.filter(x => x[0] === 'set').length)) <= 3, 'recargar no reescribe los documentos que no cambiaron: ' + (await page.evaluate(() => __nube.log.length)) + ' escrituras');
+  console.log('6. Fallos de la nube');
+  await page.evaluate(() => { __nube.fallar = p => p === 'contactos/c_f1'; __nube.codigo = 'unavailable'; __nube.lento = 1; VDO.DB.upsert('contactos', { id: 'c_f1', nombre: 'Falla Temporal', segmento: 'boca' }); });
+  await page.waitForTimeout(1800);
+  const intentos = await page.evaluate(() => __nube.log.filter(x => x[1] === 'contactos/c_f1').length);
+  ok(intentos >= 2 && /Sincronizando/.test(await page.evaluate(() => VDO.nube.estado())), 'un error transitorio se reintenta (' + intentos + ' intentos) y el estado dice Sincronizando');
+  await page.evaluate(() => { __nube.fallar = null; });
+  ok(await espera(() => __nube.store.contactos.c_f1 && /^Sincronizado/.test(VDO.nube.estado()), 20000), 'cuando la nube vuelve, el documento se guarda y el estado vuelve a Sincronizado');
+  await page.evaluate(() => { __nube.fallar = p => p === 'contactos/c_f2'; __nube.codigo = 'invalid_argument'; VDO.DB.upsert('contactos', { id: 'c_f2', nombre: 'Rechazado', segmento: 'boca' }); });
+  ok(await espera(() => Object.keys(VDO.nube.fallos()).length === 1 && /NO SINCRONIZADO/.test(VDO.nube.estado()), 6000), 'un rechazo definitivo se marca como NO SINCRONIZADO sin reintentar en bucle');
+  const intentosF2 = await page.evaluate(() => __nube.log.filter(x => x[1] === 'contactos/c_f2').length);
+  await page.evaluate(() => VDO.DB.guardar()); await page.waitForTimeout(400);
+  ok((await page.evaluate(() => __nube.log.filter(x => x[1] === 'contactos/c_f2').length)) === intentosF2, 'guardar de nuevo no insiste con el mismo contenido rechazado');
+  await page.evaluate(() => { __nube.fallar = null; VDO.DB.eliminar('contactos', 'c_f2'); }); await sinPendientes();
+  console.log('7. Subir datos guardados en este navegador');
+  await page.evaluate(() => { var d = VDO.DB.vacio(); d.contactos.push({ id: 'c_local1', nombre: 'Guardado Local', telefono: '+51 922 222 222', segmento: 'pyme' }); d.ventas.push({ id: 'v_local1', contactoId: 'c_local1', fecha: '2026-10-06', items: [], total: 100, estado: 'pagado' }); localStorage.setItem('vdo-crm-v1', JSON.stringify(d)); });
+  await page.reload(); await page.waitForFunction(() => window.VDO && VDO.nube && VDO.nube.activa(), null, { timeout: 15000 });
+  await page.waitForSelector('[data-nube="si"]', { timeout: 8000 });
+  ok(/1 contactos, 0 interacciones, 1 ventas/.test(await page.$eval('#modalContenido', e => e.textContent)), 'ofrece subir los datos locales (1 contacto, 1 venta)');
+  await page.click('[data-nube="si"]');
+  ok(await espera(() => __nube.store.contactos.c_local1 && __nube.store.ventas.v_local1, 10000), 'los sube a la nube');
+  await sinPendientes();
+  await page.reload(); await page.waitForFunction(() => window.VDO && VDO.nube && VDO.nube.activa(), null, { timeout: 15000 }); await page.waitForTimeout(800);
+  ok((await page.$('[data-nube="si"]')) === null, 'no vuelve a ofrecerlo');
+  console.log('8. Importar la base del Centro de Mando en la nube');
+  const base = JSON.parse(fs.readFileSync(path.join(RAIZ, 'datos', 'centro-de-mando.json'), 'utf8'));
+  await page.evaluate(b => { window.__r = VDO.DB.importar(b, 'fusionar'); }, base);
+  ok(await espera(() => Object.keys(__nube.store.contactos).length >= 740 && VDO.nube.pendientes() === 0, 60000), 'sincroniza la base (752 entrantes menos duplicados por teléfono o correo), ventas y cuentas: ' + (await page.evaluate(() => Object.keys(__nube.store.contactos).length + ' contactos, ' + Object.keys(__nube.store.ventas).length + ' ventas, ' + Object.keys(__nube.store.cuentas).length + ' cuentas')));
+  console.log('9. Restablecer en la nube');
+  page.once('dialog', d => d.accept());
+  await page.evaluate(() => VDO.DB.restablecer());
+  ok(await espera(() => Object.keys(__nube.store.contactos || {}).length === 0 && Object.keys(__nube.store.calendario).length === 73 && VDO.nube.pendientes() === 0, 60000), 'borra todo en la nube y deja el plan');
+  console.log('10. Sin acceso a la nube: trabaja en el navegador');
+  await page.evaluate(() => { window.__sinDbFlag = true; localStorage.setItem('__sinDb', '1'); });
+  await page.addInitScript(() => { if (localStorage.getItem('__sinDb')) window.__sinDb = true; });
+  await page.reload(); await page.waitForFunction(() => window.VDO && document.getElementById('p-hoy') && !/Conectando/.test(document.getElementById('p-hoy').textContent), null, { timeout: 15000 }); await page.waitForTimeout(300);
+  ok(!(await page.evaluate(() => VDO.nube.activa())) && (await page.evaluate(() => VDO.DB.tabla('contactos').length)) >= 1, 'si la nube no responde, arranca en modo local con sus datos');
+  await page.evaluate(() => localStorage.removeItem('__sinDb'));
+  ok(errores.length === 0, 'sin errores de consola' + (errores.length ? ': ' + errores.join(' | ') : ''));
+  await browser.close(); console.log(fallos ? `\n${fallos} fallo(s)` : '\nTodo en orden'); process.exit(fallos ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(1); });
