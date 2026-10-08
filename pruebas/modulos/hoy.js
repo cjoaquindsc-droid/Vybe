@@ -196,8 +196,8 @@ async function prepararDatos(page) {
   const val = await page.evaluate(() => VDO.DB.buscar('contactos', 'c_hoy_perdido'));
   ok(val.estado === 'perdido' && /no le interesa/.test(val.notas) && !(await page.$('.hoy-card[data-id="c_hoy_perdido"]')), '"Perdido" pide el motivo, lo anota y quita la tarjeta');
   await page.click('.hoy-card[data-id="c_prueba_03"] [data-accion-hoy="ficha"]');
-  await page.waitForSelector('#formContacto');
-  ok((await page.$eval('#formContacto [name="nombre"]', el => el.value)) === 'Carla Huamán', '"Ficha" abre la ficha del contacto');
+  await page.waitForSelector('#formContacto, .pipe-ficha');
+  ok((await page.evaluate(() => { const f = document.querySelector('#formContacto [name="nombre"]'); if (f) return f.value; const h = document.querySelector('.pipe-ficha h3'); return h ? h.textContent : ''; })) === 'Carla Huamán', '"Ficha" abre la ficha del contacto (formulario del núcleo o ficha del módulo Pipeline)');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(100);
 
